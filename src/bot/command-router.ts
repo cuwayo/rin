@@ -23,7 +23,6 @@ export interface MessageResponder {
     ): Promise<void>
     send(jid: string, content: WaSendMessageContent): Promise<void>
     react(event: WaIncomingMessageEvent, emoji: string): Promise<void>
-    remove(event: WaIncomingMessageEvent): Promise<void>
 }
 
 export type GroupAdminResolver = (
@@ -100,7 +99,7 @@ export class CommandRouter {
             return
         }
 
-        let removeAfterCommand = false
+        let removeReactionAfterCommand = false
         const context: CommandContext = {
             event,
             message,
@@ -109,15 +108,15 @@ export class CommandRouter {
             reply: (content) => responder.reply(event, content),
             send: (jid, content) => responder.send(jid, content),
             react: async (emoji, shouldRemoveAfterCommand = false) => {
-                removeAfterCommand ||= shouldRemoveAfterCommand
+                removeReactionAfterCommand ||= shouldRemoveAfterCommand
                 await responder.react(event, emoji)
             },
         }
 
         try {
             await this.container.resolve(definition.type).execute(context)
-            if (removeAfterCommand) {
-                await responder.remove(event)
+            if (removeReactionAfterCommand) {
+                await responder.react(event, '')
             }
             this.logger.info('Command execution completed', {
                 ...trace,

@@ -12,8 +12,8 @@ export interface CommandContext {
     /** Send text or supported WhatsApp content to a specific JID. */
     send(jid: string, content: WaSendMessageContent): Promise<void>
     /**
-     * React to the invoking message. Set removeAfterCommand to true to revoke
-     * that message once the command finishes; it defaults to false.
+     * React to the invoking message. Set removeAfterCommand to true to clear
+     * the reaction once the command finishes; it defaults to false.
      */
     react(emoji: string, removeAfterCommand?: boolean): Promise<void>
 }

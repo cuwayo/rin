@@ -158,14 +158,6 @@ export class ZapoBot {
                             target: incoming,
                         })
                     },
-                    remove: async (incoming) => {
-                        const chatJid = incoming.key.remoteJid
-                        if (!chatJid) return
-                        await client.message.send(chatJid, {
-                            type: 'revoke',
-                            target: incoming,
-                        })
-                    },
                 },
                 (incoming) => this.isSenderGroupAdmin(client, incoming),
                 selfJids(client),
