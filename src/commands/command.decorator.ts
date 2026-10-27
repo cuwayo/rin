@@ -17,10 +17,14 @@ export interface CommandDefinition {
     readonly name: string
     readonly aliases: readonly string[]
     readonly description: string
+    /** Label used to group this command in help output. */
+    readonly category: string
     readonly type: Constructable<BotCommand>
 }
 
-export type CommandOptions = Omit<CommandDefinition, 'type'>
+export type CommandOptions = Omit<CommandDefinition, 'type' | 'category'> & {
+    readonly category?: string
+}
 
 const commandsByName = new Map<string, CommandDefinition>()
 const permissionsByType = new WeakMap<
@@ -44,6 +48,7 @@ export function Command(
         const definition: CommandDefinition = {
             ...options,
             aliases: options.aliases ?? [],
+            category: commandCategory(options.category),
             type: target,
         }
 
@@ -140,4 +145,13 @@ export function commandChecks(
     type: Constructable<BotCommand>,
 ): readonly CommandCheck[] {
     return checksByType.get(type) ?? []
+}
+
+function commandCategory(category: string | undefined): string {
+    const normalized = category?.trim().replace(/\s+/g, ' ')
+    if (!normalized) return 'General'
+    if (normalized.length > 48) {
+        throw new Error('Command categories must be at most 48 characters.')
+    }
+    return normalized
 }

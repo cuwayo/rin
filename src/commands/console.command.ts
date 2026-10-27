@@ -14,6 +14,7 @@ const MAX_SHELL_OUTPUT_BYTES = 16 * 1024
 @Command({
     name: 'console',
     description: 'Run a superuser terminal command.',
+    category: 'Developer',
 })
 @Superuser()
 @Injectable()
@@ -32,6 +33,7 @@ export class ConsoleCommand implements BotCommand {
 @Command({
     name: 'debug',
     description: 'Run a superuser JavaScript debugging snippet.',
+    category: 'Developer',
 })
 @Superuser()
 @Injectable()

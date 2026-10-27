@@ -8,6 +8,7 @@ import type { BotCommand, CommandContext } from './contracts.ts'
     name: 'addmod',
     aliases: ['modadd'],
     description: 'Add a bot moderator by number, JID, or @mention.',
+    category: 'Developer',
 })
 @Superuser()
 @Injectable([RoleStore])
@@ -36,6 +37,7 @@ export class AddModeratorCommand implements BotCommand {
     name: 'delmod',
     aliases: ['moddel', 'removemod'],
     description: 'Remove a bot moderator by number, JID, or @mention.',
+    category: 'Developer',
 })
 @Superuser()
 @Injectable([RoleStore])
@@ -64,6 +66,7 @@ export class RemoveModeratorCommand implements BotCommand {
     name: 'mods',
     aliases: ['moderators'],
     description: 'List bot moderators.',
+    category: 'Developer',
 })
 @Superuser()
 @Injectable([RoleStore])

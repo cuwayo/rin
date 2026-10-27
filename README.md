@@ -63,7 +63,11 @@ Biome enforces four-space indentation and the recommended TypeScript lint rules.
 Create a decorated command class under `src/commands`:
 
 ```ts
-@Command({ name: 'echo', description: 'Return the supplied text.' })
+@Command({
+    name: 'echo',
+    description: 'Return the supplied text.',
+    category: 'Utility',
+})
 @Injectable()
 export class EchoCommand implements BotCommand {
     async execute({ args, reply }: CommandContext): Promise<void> {
@@ -73,6 +77,9 @@ export class EchoCommand implements BotCommand {
 ```
 
 Import the module in `src/commands/index.ts` so its decorator registers the command. Use `@Injectable([Dependency])` to declare dependencies resolved by the application container.
+
+Set an optional `category` on `@Command` to group it in `!help`; commands
+without one use the `General` category.
 
 ### Command permissions and custom checks
 
