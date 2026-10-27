@@ -1,20 +1,22 @@
-import type { WaIncomingMessageEvent } from 'zapo-js'
+import type { Logger, WaIncomingMessageEvent } from 'zapo-js'
 import { findCommand } from '../commands/command.decorator.ts'
 import type { CommandContext } from '../commands/contracts.ts'
 import type { BotConfig } from '../config.ts'
 import { BOT_CONFIG } from '../config.ts'
 import { Container, Injectable } from '../core/di.ts'
+import { APP_LOGGER } from '../core/logger.ts'
 import { parseIncomingMessage } from './message.ts'
 
 export interface MessageResponder {
     reply(event: WaIncomingMessageEvent, text: string): Promise<void>
 }
 
-@Injectable([Container, BOT_CONFIG])
+@Injectable([Container, BOT_CONFIG, APP_LOGGER])
 export class CommandRouter {
     constructor(
         private readonly container: Container,
         private readonly config: BotConfig,
+        private readonly logger: Logger,
     ) {}
 
     async handle(
@@ -34,6 +36,14 @@ export class CommandRouter {
         const definition = findCommand(rawCommand)
         if (!definition) return
 
+        const startedAt = performance.now()
+        const trace = {
+            command: definition.name,
+            invokedAs: rawCommand.toLowerCase(),
+            chatJid: event.key.remoteJid,
+            messageId: event.key.id,
+            senderJid: event.key.participant ?? event.key.remoteJid,
+        }
         const context: CommandContext = {
             event,
             message,
@@ -42,6 +52,27 @@ export class CommandRouter {
             reply: (replyText) => responder.reply(event, replyText),
         }
 
-        await this.container.resolve(definition.type).execute(context)
+        try {
+            await this.container.resolve(definition.type).execute(context)
+            this.logger.info('Command execution completed', {
+                ...trace,
+                event: 'command.execution',
+                outcome: 'success',
+                durationMs: elapsedMilliseconds(startedAt),
+            })
+        } catch (error) {
+            this.logger.error('Command execution failed', {
+                ...trace,
+                event: 'command.execution',
+                outcome: 'failure',
+                durationMs: elapsedMilliseconds(startedAt),
+                err: error,
+            })
+            throw error
+        }
     }
+}
+
+function elapsedMilliseconds(startedAt: number): number {
+    return Math.round((performance.now() - startedAt) * 100) / 100
 }

@@ -19,6 +19,7 @@ Configure the following values in `.env` as needed:
 | Variable            | Default              | Description                                                 |
 | ------------------- | -------------------- | ----------------------------------------------------------- |
 | `BOT_PREFIX`        | `!`                  | Prefix required for command messages.                       |
+| `BOT_LOG_LEVEL`     | `info`               | Minimum severity for application logs.                      |
 | `BOT_SESSION_ID`    | `rin`                | Identifier for the Zapo session.                            |
 | `BOT_AUTH_PATH`     | `.auth/state.sqlite` | SQLite file for credentials and Signal state.               |
 | `BOT_PAIRING_PHONE` | _unset_              | Optional international phone number for code-based pairing. |
@@ -42,18 +43,6 @@ Session credentials are stored at the configured `BOT_AUTH_PATH`. Keep this file
 | ------- | ---------------------------------------- |
 | `!help` | Lists registered commands.               |
 | `!ping` | Verifies that the service is responding. |
-
-## Incoming messages
-
-Commands can use `context.message` to inspect normalized incoming content. It
-covers text, media (image, video, audio, document, and sticker), locations,
-contacts, reactions, polls, interactive replies, group invites, and protocol
-messages. Media captions are treated as command text, so `!ping` works in an
-image, video, or document caption.
-
-`context.message.raw` always exposes the original Zapo protobuf for fields not
-yet normalized. For a media message, call `await context.message.download()`
-only when needed; it returns a decrypted readable stream.
 
 ## Development
 

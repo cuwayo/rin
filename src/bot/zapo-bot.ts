@@ -2,24 +2,25 @@ import { mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import { createSqliteStore } from '@zapo-js/store-sqlite'
 import * as terminalQr from 'qrcode-terminal'
-import type { WaIncomingMessageEvent } from 'zapo-js'
-import { createPinoLogger, createStore, WaClient } from 'zapo-js'
+import type { Logger, WaIncomingMessageEvent } from 'zapo-js'
+import { createStore, WaClient } from 'zapo-js'
 import type { BotConfig } from '../config.ts'
 import { BOT_CONFIG } from '../config.ts'
 import { Injectable } from '../core/di.ts'
+import { APP_LOGGER } from '../core/logger.ts'
 import { CommandRouter } from './command-router.ts'
 
-@Injectable([BOT_CONFIG, CommandRouter])
+@Injectable([BOT_CONFIG, CommandRouter, APP_LOGGER])
 export class ZapoBot {
     constructor(
         private readonly config: BotConfig,
         private readonly commandRouter: CommandRouter,
+        private readonly logger: Logger,
     ) {}
 
     async start(): Promise<void> {
         await mkdir(dirname(this.config.authPath), { recursive: true })
 
-        const logger = await createPinoLogger({ level: 'info', pretty: true })
         const store = createStore({
             backends: {
                 sqlite: createSqliteStore({
@@ -49,7 +50,7 @@ export class ZapoBot {
                 connectTimeoutMs: 15_000,
                 nodeQueryTimeoutMs: 30_000,
             },
-            logger,
+            this.logger,
         )
 
         let pairingCodeRequestInFlight = false
@@ -60,10 +61,11 @@ export class ZapoBot {
 
             displayedPairingCode = code
             const displayCode = code.match(/.{1,4}/g)?.join('-') ?? code
-            console.log(
-                `\nOn ${this.config.pairingPhoneNumber}, open Linked devices → Link with phone number instead.`,
-            )
-            console.log(`Enter this pairing code: ${displayCode}`)
+            this.logger.info('WhatsApp pairing code received', {
+                event: 'auth.pairing_code',
+                phoneNumber: this.config.pairingPhoneNumber,
+                pairingCode: displayCode,
+            })
         }
 
         const requestPairingCode = async (): Promise<void> => {
@@ -81,10 +83,10 @@ export class ZapoBot {
                     await client.auth.requestPairingCode(phoneNumber),
                 )
             } catch (error) {
-                console.error(
-                    'Unable to request a WhatsApp pairing code:',
-                    error,
-                )
+                this.logger.error('Unable to request a WhatsApp pairing code', {
+                    event: 'auth.pairing_code_request',
+                    err: error,
+                })
             } finally {
                 pairingCodeRequestInFlight = false
             }
@@ -96,9 +98,10 @@ export class ZapoBot {
                 void requestPairingCode()
                 return
             }
-            console.log(
-                `\nScan this WhatsApp QR code within ${Math.ceil(ttlMs / 1000)} seconds:`,
-            )
+            this.logger.info('WhatsApp QR code received', {
+                event: 'auth.qr',
+                expiresInSeconds: Math.ceil(ttlMs / 1000),
+            })
             terminalQr.generate(qr, { small: true })
         })
 
@@ -106,13 +109,18 @@ export class ZapoBot {
         client.on('auth_pairing_code', ({ code }) => displayPairingCode(code))
 
         client.on('auth_paired', ({ credentials }) => {
-            console.log(`Paired as ${credentials.meJid}`)
+            this.logger.info('WhatsApp paired', {
+                event: 'auth.paired',
+                accountJid: credentials.meJid,
+            })
         })
 
         client.on('connection', ({ status, reason }) => {
-            console.log(
-                `WhatsApp connection: ${status}${reason ? ` (${reason})` : ''}`,
-            )
+            this.logger.info('WhatsApp connection updated', {
+                event: 'connection.updated',
+                status,
+                reason,
+            })
         })
 
         client.on('message', (event) =>
@@ -137,7 +145,12 @@ export class ZapoBot {
                 },
             })
         } catch (error) {
-            console.error('Unable to process incoming command:', error)
+            this.logger.error('Unable to process incoming message', {
+                event: 'message.processing',
+                messageId: event.key.id,
+                chatJid: event.key.remoteJid,
+                err: error,
+            })
         }
     }
 }
