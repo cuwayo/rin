@@ -1,11 +1,8 @@
 import type { WaIncomingMessageEvent } from 'zapo-js'
+import { parseIncomingMessage } from './message.ts'
 
 export function extractMessageText(
     event: WaIncomingMessageEvent,
 ): string | undefined {
-    return (
-        event.message?.conversation ??
-        event.message?.extendedTextMessage?.text ??
-        undefined
-    )
+    return parseIncomingMessage(event)?.text
 }

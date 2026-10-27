@@ -43,6 +43,18 @@ Session credentials are stored at the configured `BOT_AUTH_PATH`. Keep this file
 | `!help` | Lists registered commands.               |
 | `!ping` | Verifies that the service is responding. |
 
+## Incoming messages
+
+Commands can use `context.message` to inspect normalized incoming content. It
+covers text, media (image, video, audio, document, and sticker), locations,
+contacts, reactions, polls, interactive replies, group invites, and protocol
+messages. Media captions are treated as command text, so `!ping` works in an
+image, video, or document caption.
+
+`context.message.raw` always exposes the original Zapo protobuf for fields not
+yet normalized. For a media message, call `await context.message.download()`
+only when needed; it returns a decrypted readable stream.
+
 ## Development
 
 ```bash
