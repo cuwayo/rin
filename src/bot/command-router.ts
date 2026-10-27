@@ -5,9 +5,16 @@ import type {
 } from 'zapo-js'
 import {
     type CommandPermission,
+    commandChecks,
+    commandPermission,
     findCommand,
 } from '../commands/command.decorator.ts'
-import type { CommandContext } from '../commands/contracts.ts'
+import type {
+    CommandAuthorizationContext,
+    CommandCheck,
+    CommandCheckResult,
+    CommandContext,
+} from '../commands/contracts.ts'
 import type { BotConfig } from '../config.ts'
 import { BOT_CONFIG } from '../config.ts'
 import { Container, Injectable } from '../core/di.ts'
@@ -30,6 +37,12 @@ export type GroupAdminResolver = (
 ) => Promise<boolean>
 
 export type SelfJids = readonly string[]
+
+interface AuthorizationResult {
+    readonly allowed: boolean
+    readonly reason?: string
+    readonly error?: unknown
+}
 
 @Injectable([Container, BOT_CONFIG, RoleStore, APP_LOGGER])
 export class CommandRouter {
@@ -76,21 +89,39 @@ export class CommandRouter {
             senderJid: senderJids[0],
             senderId: senderIds[0],
         }
-        const authorization = await this.authorize(
-            definition.permission,
+        const isSuperuser =
+            this.config.superuserId !== undefined &&
+            senderIds.includes(this.config.superuserId)
+        const authorizationContext: CommandAuthorizationContext = {
             event,
+            message,
+            prefix: this.config.prefix,
+            args,
             senderJids,
             senderIds,
-            isGroupAdmin,
+            isGroup: event.key.isGroup,
+            isSuperuser,
+            isBotModerator: () => hasModeratorRole(this.roleStore, senderJids),
+            isGroupAdmin: () =>
+                event.key.isGroup
+                    ? isGroupAdmin(event)
+                    : Promise.resolve(false),
+        }
+        const permission = commandPermission(definition.type)
+        const authorization = await this.authorize(
+            permission,
+            authorizationContext,
+            commandChecks(definition.type),
         )
         if (!authorization.allowed) {
             this.logger.warn('Command execution denied', {
                 ...trace,
                 event: 'command.authorization',
                 outcome: 'denied',
-                permission: definition.permission,
+                permission,
                 reason: authorization.reason,
                 durationMs: elapsedMilliseconds(startedAt),
+                err: authorization.error,
             })
             await responder.reply(
                 event,
@@ -138,36 +169,64 @@ export class CommandRouter {
 
     private async authorize(
         permission: CommandPermission,
-        event: WaIncomingMessageEvent,
-        senderJids: readonly string[],
-        senderIds: readonly string[],
-        isGroupAdmin: GroupAdminResolver,
-    ): Promise<{ readonly allowed: boolean; readonly reason?: string }> {
-        if (senderJids.length === 0 && senderIds.length === 0) {
+        context: CommandAuthorizationContext,
+        checks: readonly CommandCheck[],
+    ): Promise<AuthorizationResult> {
+        if (context.senderJids.length === 0 && context.senderIds.length === 0) {
             return { allowed: false, reason: 'missing_sender' }
         }
 
-        if (
-            this.config.superuserId &&
-            senderIds.includes(this.config.superuserId)
-        ) {
+        // Preserve the documented superuser override for every command,
+        // including commands with application-specific checks.
+        if (context.isSuperuser) {
             return { allowed: true }
         }
 
+        const builtInAuthorization = await this.authorizePermission(
+            permission,
+            context,
+        )
+        if (!builtInAuthorization.allowed) return builtInAuthorization
+
+        for (const check of checks) {
+            try {
+                const result = normalizeCheckResult(await check(context))
+                if (!result.allowed) {
+                    return {
+                        allowed: false,
+                        reason: result.reason ?? 'custom_check_denied',
+                    }
+                }
+            } catch (error) {
+                return {
+                    allowed: false,
+                    reason: 'custom_check_failed',
+                    error,
+                }
+            }
+        }
+
+        return { allowed: true }
+    }
+
+    private async authorizePermission(
+        permission: CommandPermission,
+        context: CommandAuthorizationContext,
+    ): Promise<AuthorizationResult> {
         switch (permission) {
             case 'public':
                 return { allowed: true }
             case 'bot-superuser':
                 return { allowed: false, reason: 'superuser_required' }
             case 'bot-moderator':
-                return (await hasModeratorRole(this.roleStore, senderJids))
+                return (await context.isBotModerator())
                     ? { allowed: true }
                     : { allowed: false, reason: 'moderator_required' }
             case 'group-admin':
-                if (!event.key.isGroup) {
+                if (!context.isGroup) {
                     return { allowed: false, reason: 'group_required' }
                 }
-                return (await isGroupAdmin(event))
+                return (await context.isGroupAdmin())
                     ? { allowed: true }
                     : { allowed: false, reason: 'group_admin_required' }
         }
@@ -197,6 +256,12 @@ async function hasModeratorRole(
         if (await roleStore.isModerator(jid)) return true
     }
     return false
+}
+
+function normalizeCheckResult(
+    result: CommandCheckResult,
+): Pick<AuthorizationResult, 'allowed' | 'reason'> {
+    return typeof result === 'boolean' ? { allowed: result } : result
 }
 
 function elapsedMilliseconds(startedAt: number): number {

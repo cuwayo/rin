@@ -1,15 +1,15 @@
 import { Injectable } from '../core/di.ts'
 import { normalizeUserJid } from '../core/jid.ts'
 import { RoleStore } from '../roles/role-store.ts'
-import { Command } from './command.decorator.ts'
+import { Command, Superuser } from './command.decorator.ts'
 import type { BotCommand, CommandContext } from './contracts.ts'
 
 @Command({
     name: 'addmod',
     aliases: ['modadd'],
     description: 'Add a bot moderator by number, JID, or @mention.',
-    permission: 'bot-superuser',
 })
+@Superuser()
 @Injectable([RoleStore])
 export class AddModeratorCommand implements BotCommand {
     constructor(private readonly roleStore: RoleStore) {}
@@ -36,8 +36,8 @@ export class AddModeratorCommand implements BotCommand {
     name: 'delmod',
     aliases: ['moddel', 'removemod'],
     description: 'Remove a bot moderator by number, JID, or @mention.',
-    permission: 'bot-superuser',
 })
+@Superuser()
 @Injectable([RoleStore])
 export class RemoveModeratorCommand implements BotCommand {
     constructor(private readonly roleStore: RoleStore) {}
@@ -64,8 +64,8 @@ export class RemoveModeratorCommand implements BotCommand {
     name: 'mods',
     aliases: ['moderators'],
     description: 'List bot moderators.',
-    permission: 'bot-superuser',
 })
+@Superuser()
 @Injectable([RoleStore])
 export class ListModeratorsCommand implements BotCommand {
     constructor(private readonly roleStore: RoleStore) {}

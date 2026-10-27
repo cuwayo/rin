@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process'
 import { inspect, promisify } from 'node:util'
 import { runInNewContext } from 'node:vm'
 import { Injectable } from '../core/di.ts'
-import { Command } from './command.decorator.ts'
+import { Command, Superuser } from './command.decorator.ts'
 import type { BotCommand, CommandContext } from './contracts.ts'
 
 const executeFile = promisify(execFile)
@@ -14,8 +14,8 @@ const MAX_SHELL_OUTPUT_BYTES = 16 * 1024
 @Command({
     name: 'console',
     description: 'Run a superuser terminal command.',
-    permission: 'bot-superuser',
 })
+@Superuser()
 @Injectable()
 export class ConsoleCommand implements BotCommand {
     async execute(context: CommandContext): Promise<void> {
@@ -32,8 +32,8 @@ export class ConsoleCommand implements BotCommand {
 @Command({
     name: 'debug',
     description: 'Run a superuser JavaScript debugging snippet.',
-    permission: 'bot-superuser',
 })
+@Superuser()
 @Injectable()
 export class DebugCommand implements BotCommand {
     async execute(context: CommandContext): Promise<void> {

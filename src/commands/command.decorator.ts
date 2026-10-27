@@ -1,5 +1,5 @@
 import type { Constructable } from '../core/di.ts'
-import type { BotCommand } from './contracts.ts'
+import type { BotCommand, CommandCheck } from './contracts.ts'
 
 /**
  * The access level required to execute a command.
@@ -17,15 +17,20 @@ export interface CommandDefinition {
     readonly name: string
     readonly aliases: readonly string[]
     readonly description: string
-    readonly permission: CommandPermission
     readonly type: Constructable<BotCommand>
 }
 
-export type CommandOptions = Omit<CommandDefinition, 'type' | 'permission'> & {
-    readonly permission?: CommandPermission
-}
+export type CommandOptions = Omit<CommandDefinition, 'type'>
 
 const commandsByName = new Map<string, CommandDefinition>()
+const permissionsByType = new WeakMap<
+    Constructable<BotCommand>,
+    CommandPermission
+>()
+const checksByType = new WeakMap<
+    Constructable<BotCommand>,
+    readonly CommandCheck[]
+>()
 
 export function Command(
     options: Omit<CommandOptions, 'aliases'> & {
@@ -39,7 +44,6 @@ export function Command(
         const definition: CommandDefinition = {
             ...options,
             aliases: options.aliases ?? [],
-            permission: options.permission ?? 'public',
             type: target,
         }
 
@@ -63,4 +67,77 @@ export function listCommands(): readonly CommandDefinition[] {
     return [...new Set(commandsByName.values())].sort((left, right) =>
         left.name.localeCompare(right.name),
     )
+}
+
+/**
+ * Sets the built-in role required by a command. A command may have one such
+ * role decorator; use `Require` as well when it needs additional rules.
+ */
+export function Permission(permission: CommandPermission) {
+    return (
+        target: Constructable<BotCommand>,
+        _context: ClassDecoratorContext,
+    ): void => {
+        const existingPermission = permissionsByType.get(target)
+        if (existingPermission && existingPermission !== permission) {
+            throw new Error(
+                `${target.name} has conflicting permission decorators: ` +
+                    `"${existingPermission}" and "${permission}".`,
+            )
+        }
+        permissionsByType.set(target, permission)
+    }
+}
+
+/** Requires the sender to be an admin of the current WhatsApp group. */
+export const GroupAdmin = () => Permission('group-admin')
+
+/** Requires the sender to be a bot moderator. */
+export const Moderator = () => Permission('bot-moderator')
+
+/** Requires the configured bot superuser. */
+export const Superuser = () => Permission('bot-superuser')
+
+export function commandPermission(
+    type: Constructable<BotCommand>,
+): CommandPermission {
+    return permissionsByType.get(type) ?? 'public'
+}
+
+/**
+ * Adds one or more authorization checks to a command.
+ *
+ * Checks are evaluated after its built-in permission decorator succeeds. They
+ * may be asynchronous and must return `true` to allow execution. Reusable
+ * checks can be wrapped in application-specific decorators.
+ *
+ * @example
+ * const InAllowedGroup = () =>
+ *     Require((authorization) =>
+ *         authorization.event.key.remoteJid === '123@g.us',
+ *     )
+ *
+ * @Command({ name: 'announce', description: 'Send an announcement.' })
+ * @InAllowedGroup()
+ * class AnnounceCommand implements BotCommand { ... }
+ */
+export function Require(...checks: readonly CommandCheck[]) {
+    return (
+        target: Constructable<BotCommand>,
+        _context: ClassDecoratorContext,
+    ): void => {
+        const existingChecks = checksByType.get(target) ?? []
+        // Class decorators execute from bottom to top. Prepending keeps checks
+        // in the same order they appear in source code.
+        checksByType.set(target, [...checks, ...existingChecks])
+    }
+}
+
+/** Alias for `Require`, mirroring the familiar command-check terminology. */
+export const Check = Require
+
+export function commandChecks(
+    type: Constructable<BotCommand>,
+): readonly CommandCheck[] {
+    return checksByType.get(type) ?? []
 }

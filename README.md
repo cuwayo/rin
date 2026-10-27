@@ -74,14 +74,15 @@ export class EchoCommand implements BotCommand {
 
 Import the module in `src/commands/index.ts` so its decorator registers the command. Use `@Injectable([Dependency])` to declare dependencies resolved by the application container.
 
-### Command permissions
+### Command permissions and custom checks
 
-Set `permission` on `@Command` to restrict a command. Commands are `public` by
-default. `bot-superuser` requires the single numeric `BOT_SUPERUSER_ID`;
-`bot-moderator` requires an entry in the moderator database (or the
-superuser); and `group-admin` is available to WhatsApp group admins only (or
-the superuser). Group-admin checks fetch current group metadata, and therefore
-are denied if WhatsApp cannot be reached to verify the role.
+Permissions are class decorators, separate from command registration:
+`@GroupAdmin()`, `@Moderator()`, and `@Superuser()`. Commands without a
+permission decorator are public. `@Superuser()` requires the single numeric
+`BOT_SUPERUSER_ID`; `@Moderator()` requires an entry in the moderator database
+(or the superuser); and `@GroupAdmin()` is available to WhatsApp group admins
+only (or the superuser). Group-admin checks fetch current group metadata, and
+therefore are denied if WhatsApp cannot be reached to verify the role.
 
 The superuser maintains moderator assignments with `!addmod`, `!delmod`, and
 `!mods`. Add and remove commands accept a phone number, a WhatsApp user JID, or
@@ -95,12 +96,41 @@ The superuser can also run administrative terminal and debugging commands:
 ```
 
 ```ts
-@Command({
-    name: 'purge',
-    description: 'Remove recent messages.',
-    permission: 'group-admin',
-})
+@Command({ name: 'purge', description: 'Remove recent messages.' })
+@GroupAdmin()
 ```
+
+For policies beyond those built-in roles, add `@Require(...)` (or its
+`@Check(...)` alias). A check receives the sender, parsed message, arguments,
+and lazy role resolvers. It can be synchronous or asynchronous, and can be
+packaged into a reusable decorator in the same style as discord.py checks:
+
+```ts
+import { Command, Require } from './command.decorator.ts'
+
+const InAllowedGroup = (groupJid: string) =>
+    Require((authorization) => {
+        if (authorization.event.key.remoteJid === groupJid) return true
+        return { allowed: false, reason: 'allowed_group_required' }
+    })
+
+@Command({ name: 'announce', description: 'Send an announcement.' })
+@Moderator()
+@InAllowedGroup('123456789@g.us')
+@Injectable()
+export class AnnounceCommand implements BotCommand {
+    async execute(context: CommandContext): Promise<void> {
+        // ...
+    }
+}
+```
+
+Multiple checks are combined with AND semantics and run after the built-in
+permission decorator. Checks may call `authorization.isBotModerator()` or
+`authorization.isGroupAdmin()` when needed. Returning `false`, returning
+`{ allowed: false, reason }`, or throwing denies execution; a thrown error
+fails closed and is logged. The configured superuser remains able to run every
+command, including commands with custom checks.
 
 ## License
 
