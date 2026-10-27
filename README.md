@@ -1,0 +1,76 @@
+# Rin
+
+Rin is a WhatsApp command service built with [Zapo](https://zapo.to/) and TypeScript. It provides decorator-based command registration, dependency injection, and persistent SQLite session storage.
+
+## Prerequisites
+
+- Bun 1.4 or later
+- A WhatsApp account that can be linked as a companion device
+
+## Installation
+
+```bash
+bun install
+cp .env.example .env
+```
+
+Configure the following values in `.env` as needed:
+
+| Variable            | Default              | Description                                                 |
+| ------------------- | -------------------- | ----------------------------------------------------------- |
+| `BOT_PREFIX`        | `!`                  | Prefix required for command messages.                       |
+| `BOT_SESSION_ID`    | `rin`                | Identifier for the Zapo session.                            |
+| `BOT_AUTH_PATH`     | `.auth/state.sqlite` | SQLite file for credentials and Signal state.               |
+| `BOT_PAIRING_PHONE` | _unset_              | Optional international phone number for code-based pairing. |
+
+## Running the service
+
+```bash
+bun run dev
+```
+
+On an unpaired session, one of the following methods is used:
+
+- **QR pairing (default):** In WhatsApp, open **Settings → Linked devices → Link a device**, then scan the QR code shown in the terminal.
+- **Phone-number pairing:** Set `BOT_PAIRING_PHONE` to a digits-only international phone number, for example `628123456789`. The terminal displays an eight-character code. In WhatsApp, select **Linked devices → Link with phone number instead** and enter the code.
+
+Session credentials are stored at the configured `BOT_AUTH_PATH`. Keep this file private; it is excluded from version control.
+
+## Commands
+
+| Command | Description                              |
+| ------- | ---------------------------------------- |
+| `!help` | Lists registered commands.               |
+| `!ping` | Verifies that the service is responding. |
+
+## Development
+
+```bash
+bun run format        # Format project files
+bun run format:check  # Validate formatting
+bun run lint          # Run static analysis
+bun run typecheck     # Type-check without emitting files
+bun run verify        # Run type-checking and all Biome checks
+```
+
+Biome enforces four-space indentation and the recommended TypeScript lint rules. The GitHub Actions workflow runs `bun run verify` for every push and pull request.
+
+## Extending commands
+
+Create a decorated command class under `src/commands`:
+
+```ts
+@Command({ name: 'echo', description: 'Return the supplied text.' })
+@Injectable()
+export class EchoCommand implements BotCommand {
+    async execute({ args, reply }: CommandContext): Promise<void> {
+        await reply(args.join(' ') || 'No text was supplied.')
+    }
+}
+```
+
+Import the module in `src/commands/index.ts` so its decorator registers the command. Use `@Injectable([Dependency])` to declare dependencies resolved by the application container.
+
+## License
+
+Rin is licensed under the GNU General Public License v3.0 only. See [LICENSE](LICENSE).
