@@ -6,6 +6,10 @@ export interface BotConfig {
     readonly authPath: string
     readonly pairingPhoneNumber?: string
     readonly logLevel: LogLevel
+    /** The sole WhatsApp account number permitted to execute every command. */
+    readonly superuserId?: string
+    /** SQLite database that stores bot moderator assignments. */
+    readonly roleDbPath: string
 }
 
 export const BOT_CONFIG = Symbol('BOT_CONFIG')
@@ -30,6 +34,21 @@ function logLevel(value: string | undefined): LogLevel {
     return level
 }
 
+function superuserId(
+    value: string | undefined,
+    variableName: string,
+): string | undefined {
+    const candidate = value?.trim()
+    if (!candidate) return undefined
+    if (/^\d{7,15}$/.test(candidate)) {
+        return candidate
+    }
+
+    throw new Error(
+        `${variableName} must contain only a 7–15 digit WhatsApp phone number.`,
+    )
+}
+
 export function loadConfig(environment = Bun.env): BotConfig {
     const prefix = nonEmpty(environment.BOT_PREFIX, '!')
     if (prefix.length > 3) {
@@ -49,5 +68,13 @@ export function loadConfig(environment = Bun.env): BotConfig {
         authPath: nonEmpty(environment.BOT_AUTH_PATH, '.auth/state.sqlite'),
         pairingPhoneNumber,
         logLevel: logLevel(environment.BOT_LOG_LEVEL),
+        superuserId: superuserId(
+            environment.BOT_SUPERUSER_ID,
+            'BOT_SUPERUSER_ID',
+        ),
+        roleDbPath: nonEmpty(
+            environment.BOT_ROLE_DB_PATH,
+            '.auth/roles.sqlite',
+        ),
     }
 }

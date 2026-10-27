@@ -1,14 +1,29 @@
 import type { Constructable } from '../core/di.ts'
 import type { BotCommand } from './contracts.ts'
 
+/**
+ * The access level required to execute a command.
+ *
+ * Bot superusers can run every command. Bot moderators can run moderator
+ * commands, but do not automatically receive group-admin privileges.
+ */
+export type CommandPermission =
+    | 'public'
+    | 'group-admin'
+    | 'bot-moderator'
+    | 'bot-superuser'
+
 export interface CommandDefinition {
     readonly name: string
     readonly aliases: readonly string[]
     readonly description: string
+    readonly permission: CommandPermission
     readonly type: Constructable<BotCommand>
 }
 
-export type CommandOptions = Omit<CommandDefinition, 'type'>
+export type CommandOptions = Omit<CommandDefinition, 'type' | 'permission'> & {
+    readonly permission?: CommandPermission
+}
 
 const commandsByName = new Map<string, CommandDefinition>()
 
@@ -24,6 +39,7 @@ export function Command(
         const definition: CommandDefinition = {
             ...options,
             aliases: options.aliases ?? [],
+            permission: options.permission ?? 'public',
             type: target,
         }
 

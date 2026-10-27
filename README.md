@@ -23,6 +23,8 @@ Configure the following values in `.env` as needed:
 | `BOT_SESSION_ID`    | `rin`                | Identifier for the Zapo session.                            |
 | `BOT_AUTH_PATH`     | `.auth/state.sqlite` | SQLite file for credentials and Signal state.               |
 | `BOT_PAIRING_PHONE` | _unset_              | Optional international phone number for code-based pairing. |
+| `BOT_SUPERUSER_ID`  | _unset_              | Owner phone number only; no `@s.whatsapp.net` or `@lid`.    |
+| `BOT_ROLE_DB_PATH`  | `.auth/roles.sqlite` | SQLite database for superuser-managed moderators.           |
 
 ## Running the service
 
@@ -71,6 +73,34 @@ export class EchoCommand implements BotCommand {
 ```
 
 Import the module in `src/commands/index.ts` so its decorator registers the command. Use `@Injectable([Dependency])` to declare dependencies resolved by the application container.
+
+### Command permissions
+
+Set `permission` on `@Command` to restrict a command. Commands are `public` by
+default. `bot-superuser` requires the single numeric `BOT_SUPERUSER_ID`;
+`bot-moderator` requires an entry in the moderator database (or the
+superuser); and `group-admin` is available to WhatsApp group admins only (or
+the superuser). Group-admin checks fetch current group metadata, and therefore
+are denied if WhatsApp cannot be reached to verify the role.
+
+The superuser maintains moderator assignments with `!addmod`, `!delmod`, and
+`!mods`. Add and remove commands accept a phone number, a WhatsApp user JID, or
+a WhatsApp @mention.
+
+The superuser can also run administrative terminal and debugging commands:
+
+```text
+!console <shell command>
+!debug <JavaScript expression or statements>
+```
+
+```ts
+@Command({
+    name: 'purge',
+    description: 'Remove recent messages.',
+    permission: 'group-admin',
+})
+```
 
 ## License
 

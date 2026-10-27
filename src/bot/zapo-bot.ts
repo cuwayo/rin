@@ -7,6 +7,7 @@ import { createStore, WaClient } from 'zapo-js'
 import type { BotConfig } from '../config.ts'
 import { BOT_CONFIG } from '../config.ts'
 import { Injectable } from '../core/di.ts'
+import { normalizeUserJid } from '../core/jid.ts'
 import { APP_LOGGER } from '../core/logger.ts'
 import { CommandRouter } from './command-router.ts'
 
@@ -135,15 +136,40 @@ export class ZapoBot {
         event: WaIncomingMessageEvent,
     ): Promise<void> {
         try {
-            await this.commandRouter.handle(event, {
-                reply: async (incoming, text) => {
-                    const chatJid = incoming.key.remoteJid
-                    if (!chatJid) return
-                    await client.message.send(chatJid, text, {
-                        quote: incoming,
-                    })
+            await this.commandRouter.handle(
+                event,
+                {
+                    reply: async (incoming, content) => {
+                        const chatJid = incoming.key.remoteJid
+                        if (!chatJid) return
+                        await client.message.send(chatJid, content, {
+                            quote: incoming,
+                        })
+                    },
+                    send: async (jid, content) => {
+                        await client.message.send(jid, content)
+                    },
+                    react: async (incoming, emoji) => {
+                        const chatJid = incoming.key.remoteJid
+                        if (!chatJid) return
+                        await client.message.send(chatJid, {
+                            type: 'reaction',
+                            emoji,
+                            target: incoming,
+                        })
+                    },
+                    remove: async (incoming) => {
+                        const chatJid = incoming.key.remoteJid
+                        if (!chatJid) return
+                        await client.message.send(chatJid, {
+                            type: 'revoke',
+                            target: incoming,
+                        })
+                    },
                 },
-            })
+                (incoming) => this.isSenderGroupAdmin(client, incoming),
+                selfJids(client),
+            )
         } catch (error) {
             this.logger.error('Unable to process incoming message', {
                 event: 'message.processing',
@@ -153,4 +179,55 @@ export class ZapoBot {
             })
         }
     }
+
+    private async isSenderGroupAdmin(
+        client: InstanceType<typeof WaClient>,
+        event: WaIncomingMessageEvent,
+    ): Promise<boolean> {
+        const groupJid = event.key.remoteJid
+        const senderJid = event.key.participant
+        if (!event.key.isGroup || !groupJid || !senderJid) return false
+
+        try {
+            const senderJids = new Set(
+                [
+                    normalizeUserJid(senderJid),
+                    ...(event.key.participantAlt
+                        ? [normalizeUserJid(event.key.participantAlt)]
+                        : []),
+                ].filter((jid): jid is string => jid !== undefined),
+            )
+            const metadata = await client.group.queryGroupMetadata(groupJid)
+            return metadata.participants.some(
+                (participant) =>
+                    participant.isAdmin &&
+                    [participant.jid, participant.lid, participant.phoneNumber]
+                        .filter((jid): jid is string => jid !== undefined)
+                        .map(normalizeUserJid)
+                        .some(
+                            (participantJid) =>
+                                participantJid !== undefined &&
+                                senderJids.has(participantJid),
+                        ),
+            )
+        } catch (error) {
+            this.logger.warn(
+                'Unable to verify whether the command sender is a group admin',
+                {
+                    event: 'command.authorization',
+                    chatJid: groupJid,
+                    messageId: event.key.id,
+                    err: error,
+                },
+            )
+            return false
+        }
+    }
+}
+
+function selfJids(client: InstanceType<typeof WaClient>): readonly string[] {
+    const credentials = client.getCredentials()
+    return [credentials?.meJid, credentials?.meLid].filter(
+        (jid): jid is string => jid !== undefined,
+    )
 }
