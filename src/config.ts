@@ -1,4 +1,5 @@
 import type { LogLevel } from 'zapo-js'
+import { createToken } from './core/di.ts'
 
 export interface BotConfig {
     readonly prefix: string
@@ -12,7 +13,7 @@ export interface BotConfig {
     readonly roleDbPath: string
 }
 
-export const BOT_CONFIG = Symbol('BOT_CONFIG')
+export const BOT_CONFIG = createToken<BotConfig>('BOT_CONFIG')
 
 function nonEmpty(value: string | undefined, fallback: string): string {
     return value?.trim() || fallback

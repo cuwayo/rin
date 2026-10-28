@@ -12,7 +12,9 @@ import { APP_LOGGER } from '../core/logger.ts'
 import { CommandRouter } from './command-router.ts'
 
 @Injectable([BOT_CONFIG, CommandRouter, APP_LOGGER])
-export class ZapoBot {
+export class ZapoBot implements AsyncDisposable {
+    private client: InstanceType<typeof WaClient> | undefined
+
     constructor(
         private readonly config: BotConfig,
         private readonly commandRouter: CommandRouter,
@@ -20,6 +22,8 @@ export class ZapoBot {
     ) {}
 
     async start(): Promise<void> {
+        if (this.client !== undefined) return
+
         await mkdir(dirname(this.config.authPath), { recursive: true })
 
         const store = createStore({
@@ -53,6 +57,7 @@ export class ZapoBot {
             },
             this.logger,
         )
+        this.client = client
 
         let pairingCodeRequestInFlight = false
         let displayedPairingCode: string | undefined
@@ -129,6 +134,12 @@ export class ZapoBot {
         )
 
         await client.connect()
+    }
+
+    async [Symbol.asyncDispose](): Promise<void> {
+        const client = this.client
+        this.client = undefined
+        if (client !== undefined) await client.disconnect()
     }
 
     private async handleIncomingMessage(

@@ -6,6 +6,8 @@ Rin is a WhatsApp command service built with [Zapo](https://zapo.to/) and TypeSc
 
 - Bun 1.4 or later
 - A WhatsApp account that can be linked as a companion device
+- Linux x64 or ARM64 to use `!sticker`; its native conversion worker is
+  distributed for those platforms.
 
 ## Installation
 
@@ -41,10 +43,11 @@ Session credentials are stored at the configured `BOT_AUTH_PATH`. Keep this file
 
 ## Commands
 
-| Command | Description                              |
-| ------- | ---------------------------------------- |
-| `!help` | Lists registered commands.               |
-| `!ping` | Verifies that the service is responding. |
+| Command           | Description                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| `!help`           | Lists registered commands.                                                                 |
+| `!ping`           | Verifies that the service is responding.                                                   |
+| `!sticker` (`!s`) | Converts a supported image or video attached to, or quoted by, the command (up to 16 MiB). |
 
 ## Development
 
@@ -80,6 +83,82 @@ Import the module in `src/commands/index.ts` so its decorator registers the comm
 
 Set an optional `category` on `@Command` to group it in `!help`; commands
 without one use the `General` category.
+
+### Dependency-injection lifetimes
+
+`@Injectable()` services are singletons by default. The container also supports
+typed symbol tokens, factories, transient services, and request/job scopes:
+
+```ts
+import { Container, createToken, Injectable } from './src/core/di.ts'
+
+const container = new Container()
+
+interface Clock {
+    now(): number
+}
+
+const CLOCK = createToken<Clock>('Clock')
+const REQUEST_ID = createToken<string>('RequestId')
+
+@Injectable()
+class SystemClock implements Clock {
+    now(): number {
+        return Date.now()
+    }
+}
+
+@Injectable({
+    dependencies: [CLOCK, REQUEST_ID],
+    lifetime: 'scoped',
+})
+class RequestState {
+    constructor(
+        readonly clock: Clock,
+        readonly requestId: string,
+    ) {}
+}
+
+container
+    .registerSingleton(CLOCK, SystemClock)
+    .registerFactory(REQUEST_ID, () => crypto.randomUUID(), 'scoped')
+
+const scope = container.createScope()
+try {
+    const state = scope.resolve(RequestState)
+    console.log(state.clock.now(), state.requestId)
+} finally {
+    await scope.dispose()
+}
+```
+
+`registerTransient` creates an instance for every resolution; `registerScoped`
+shares an instance within a scope. A singleton cannot consume a scoped service,
+including through transient services, which prevents leaking request state. All
+container-managed lifecycle services are disposed when their owning scope or the
+root container is disposed. Values passed to `registerValue` remain
+caller-owned.
+
+### Service disposal
+
+Container-managed services can implement standard `AsyncDisposable` to release
+resources:
+
+```ts
+@Injectable()
+export class CacheClient implements AsyncDisposable {
+    async [Symbol.asyncDispose](): Promise<void> {
+        await this.close()
+    }
+}
+```
+
+The container invokes `[Symbol.asyncDispose]()` (or synchronous
+`[Symbol.dispose]()`), once in reverse creation order when an owner is
+disposed. `bootstrap()` disposes the container if initialization fails and
+handles `SIGINT`, `SIGTERM`, and normal event-loop shutdown through
+`beforeExit`. It continues disposing remaining services if an earlier callback
+fails.
 
 ### Command permissions and custom checks
 
