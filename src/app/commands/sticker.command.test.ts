@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test'
 import { Readable } from 'node:stream'
 import { NativeStickerWorkerTransportError } from '@rin-ts/sticker'
+import type { CommandContext } from '../../framework/commands/contracts.ts'
 import type { StickerWorker } from '../sticker/sticker-worker.ts'
-import type { CommandContext } from './contracts.ts'
 import { StickerCommand } from './sticker.command.ts'
 
 const sticker = {

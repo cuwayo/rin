@@ -5,10 +5,13 @@ import {
     NativeStickerWorkerTransportError,
 } from '@rin-ts/sticker'
 import { downloadMediaMessage } from 'zapo-js'
-import { Injectable } from '../core/di.ts'
+import { Command } from '../../framework/commands/command.decorator.ts'
+import type {
+    BotCommand,
+    CommandContext,
+} from '../../framework/commands/contracts.ts'
+import { Injectable } from '../../framework/core/di.ts'
 import { StickerWorker } from '../sticker/sticker-worker.ts'
-import { Command } from './command.decorator.ts'
-import type { BotCommand, CommandContext } from './contracts.ts'
 
 const maximumSourceBytes = 16 * 1024 * 1024
 
@@ -16,7 +19,6 @@ const maximumSourceBytes = 16 * 1024 * 1024
     name: 'sticker',
     aliases: ['s'],
     description: 'Convert an image or video into a WhatsApp sticker.',
-    category: 'Media',
 })
 @Injectable([StickerWorker])
 export class StickerCommand implements BotCommand {

@@ -70,15 +70,33 @@ bun run verify        # Run type-checking and all Biome checks
 
 Biome enforces four-space indentation and the recommended TypeScript lint rules. The GitHub Actions workflow runs `bun run verify` for every push and pull request.
 
+## Project layout
+
+`src/framework/` contains the reusable bot runtime: the command router,
+decorators and contracts, DI container, WhatsApp integration, configuration,
+and shared services. `src/app/` is application-owned code: commands, feature
+services, and the composition bootstrap.
+
+Commands are autoloaded from `src/app/commands/**/*.command.ts` at startup.
+The filename convention deliberately excludes `*.test.ts`, so a new command
+only needs its own decorated module—there is no central imports file to edit.
+
 ## Extending commands
 
-Create a decorated command class under `src/commands`:
+Create a decorated command class under `src/app/commands`, for example
+`src/app/commands/echo.command.ts`:
 
 ```ts
+import { Injectable } from '../../framework/core/di.ts'
+import { Command } from '../../framework/commands/command.decorator.ts'
+import type {
+    BotCommand,
+    CommandContext,
+} from '../../framework/commands/contracts.ts'
+
 @Command({
     name: 'echo',
     description: 'Return the supplied text.',
-    category: 'Utility',
 })
 @Injectable()
 export class EchoCommand implements BotCommand {
@@ -88,10 +106,9 @@ export class EchoCommand implements BotCommand {
 }
 ```
 
-Import the module in `src/commands/index.ts` so its decorator registers the command. Use `@Injectable([Dependency])` to declare dependencies resolved by the application container.
-
-Set an optional `category` on `@Command` to group it in `!help`; commands
-without one use the `General` category.
+The module is registered automatically at startup. Use
+`@Injectable([Dependency])` to declare dependencies resolved by the application
+container.
 
 ### Dependency-injection lifetimes
 
@@ -99,7 +116,7 @@ without one use the `General` category.
 typed symbol tokens, factories, transient services, and request/job scopes:
 
 ```ts
-import { Container, createToken, Injectable } from './src/core/di.ts'
+import { Container, createToken, Injectable } from './src/framework/core/di.ts'
 
 const container = new Container()
 
@@ -171,23 +188,24 @@ fails.
 
 ### Command permissions and custom checks
 
-Permissions are class decorators, separate from command registration:
-`@GroupAdmin()`, `@Moderator()`, and `@Superuser()`. Commands without a
-permission decorator are public. `@Superuser()` requires the single numeric
+Permissions are decorators, separate from command registration:
+`@GroupAdmin()`, `@Moderator()`, and `@Superuser()`. Apply them to command
+classes or command-group subcommand methods. Commands without a permission
+decorator are public. `@Superuser()` requires the single numeric
 `BOT_SUPERUSER_ID`; `@Moderator()` requires an entry in the moderator database
 (or the superuser); and `@GroupAdmin()` is available to WhatsApp group admins
 only (or the superuser). Group-admin checks fetch current group metadata, and
 therefore are denied if WhatsApp cannot be reached to verify the role.
 
-The superuser maintains moderator assignments with `!addmod`, `!delmod`, and
-`!mods`. Add and remove commands accept a phone number, a WhatsApp user JID, or
-a WhatsApp @mention.
+The superuser maintains moderator assignments with `!cardinal addmod`,
+`!cardinal delmod`, and `!cardinal mods`. Add and remove commands accept a phone
+number, a WhatsApp user JID, or a WhatsApp @mention.
 
 The superuser can also run administrative terminal and debugging commands:
 
 ```text
-!console <shell command>
-!debug <JavaScript expression or statements>
+!cardinal console <shell command>
+!cardinal debug <JavaScript expression or statements>
 ```
 
 ```ts
@@ -201,7 +219,7 @@ and lazy role resolvers. It can be synchronous or asynchronous, and can be
 packaged into a reusable decorator in the same style as discord.py checks:
 
 ```ts
-import { Command, Require } from './command.decorator.ts'
+import { Command, Require } from '../../framework/commands/command.decorator.ts'
 
 const InAllowedGroup = (groupJid: string) =>
     Require((authorization) => {
@@ -227,6 +245,62 @@ permission decorator. Checks may call `authorization.isBotModerator()` or
 fails closed and is logged. The configured superuser remains able to run every
 command, including commands with custom checks.
 
+### Command groups and subcommands
+
+Use `@Group(...)` on a DI-managed command class, then put `@Command(...)` on
+its methods. This follows Discord.Net’s group/module style while keeping the
+current TypeScript decorator and OOP model:
+
+```ts
+import { Injectable } from '../../framework/core/di.ts'
+import {
+    Command,
+    Group,
+    GroupAdmin,
+} from '../../framework/commands/command.decorator.ts'
+import type {
+    BotCommand,
+    CommandContext,
+} from '../../framework/commands/contracts.ts'
+
+@Group({
+    name: 'poll',
+    aliases: ['vote'],
+    description: 'Manage polls in this group.',
+})
+@GroupAdmin()
+@Injectable()
+export class PollCommand implements BotCommand {
+    // Called for `!poll` or an unknown subcommand.
+    async execute(context: CommandContext): Promise<void> {
+        await context.reply(`Usage: ${context.prefix}poll create|close`)
+    }
+
+    @Command({
+        name: 'create',
+        aliases: ['new'],
+        description: 'Create a poll.',
+    })
+    async create(context: CommandContext): Promise<void> {
+        // For `!poll create Best snack?`, this is ["Best", "snack?"].
+        await context.reply(`Creating a poll: ${context.args.join(' ')}`)
+    }
+
+    @Command({
+        name: 'close',
+        description: 'Close the active poll.',
+    })
+    async close(context: CommandContext): Promise<void> {
+        // ...
+    }
+}
+```
+
+Group permissions and custom checks apply to every subcommand. A permission,
+check, or cooldown placed on a subcommand method applies in addition to the
+group’s authorization; a subcommand cooldown overrides a group cooldown.
+`!help` lists top-level commands and groups without exposing their subcommands.
+
 ### Command cooldowns
 
 Use `@Cooldown(milliseconds)` to limit each sender's executions of a command.
@@ -234,7 +308,10 @@ Cooldowns are in-memory, begin after authorization succeeds but before the
 command runs, and reset if the bot restarts:
 
 ```ts
-import { Command, Cooldown } from './command.decorator.ts'
+import {
+    Command,
+    Cooldown,
+} from '../../framework/commands/command.decorator.ts'
 
 @Command({ name: 'render', description: 'Render an image.' })
 @Cooldown(30_000)

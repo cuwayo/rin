@@ -1,6 +1,11 @@
 import { expect, test } from 'bun:test'
 import type { Logger, WaIncomingMessageEvent } from 'zapo-js'
-import { Command, Cooldown } from '../commands/command.decorator.ts'
+import {
+    Command,
+    Cooldown,
+    Group,
+    GroupAdmin,
+} from '../commands/command.decorator.ts'
 import type { BotCommand, CommandContext } from '../commands/contracts.ts'
 import type { BotConfig } from '../config.ts'
 import { Container, Injectable } from '../core/di.ts'
@@ -34,6 +39,30 @@ class RouterFailureCommand implements BotCommand {
     }
 }
 void RouterFailureCommand
+
+@Group({
+    name: 'router-group-test',
+    description: 'Test group command routing.',
+})
+@GroupAdmin()
+@Injectable()
+class RouterGroupCommand implements BotCommand {
+    static receivedArgs: readonly string[] = []
+    static fallbackArgs: readonly string[] = []
+
+    async execute(context: CommandContext): Promise<void> {
+        RouterGroupCommand.fallbackArgs = context.args
+    }
+
+    @Command({
+        name: 'echo',
+        aliases: ['say'],
+        description: 'Record subcommand arguments for testing.',
+    })
+    async echo(context: CommandContext): Promise<void> {
+        RouterGroupCommand.receivedArgs = context.args
+    }
+}
 
 test('does not execute a command again while its sender cooldown is active', async () => {
     RouterCooldownCommand.executions = 0
@@ -95,6 +124,37 @@ test('reports failures and clears reactions marked for removal', async () => {
     expect(reactions).toEqual(['⏳', ''])
 })
 
+test('routes a group subcommand with inherited permissions and sliced arguments', async () => {
+    RouterGroupCommand.receivedArgs = []
+    RouterGroupCommand.fallbackArgs = []
+    const router = new CommandRouter(
+        new Container(),
+        testConfig,
+        {} as RoleStore,
+        new CommandCooldownTracker(),
+        silentLogger,
+    )
+    const replies: unknown[] = []
+    const responder: MessageResponder = {
+        reply: async (_event, content) => {
+            replies.push(content)
+        },
+        send: async () => undefined,
+        react: async () => undefined,
+    }
+    const event = commandEvent('!router-group-test say first second', true)
+
+    await router.handle(event, responder, async () => false, [])
+
+    expect(RouterGroupCommand.receivedArgs).toEqual([])
+    expect(replies).toEqual(['You do not have permission to use this command.'])
+
+    await router.handle(event, responder, async () => true, [])
+
+    expect(RouterGroupCommand.receivedArgs).toEqual(['first', 'second'])
+    expect(RouterGroupCommand.fallbackArgs).toEqual([])
+})
+
 const testConfig: BotConfig = {
     prefix: '!',
     sessionId: 'test',
@@ -109,13 +169,18 @@ const silentLogger = {
     error: () => undefined,
 } as unknown as Logger
 
-function commandEvent(text = '!router-cooldown-test'): WaIncomingMessageEvent {
+function commandEvent(
+    text = '!router-cooldown-test',
+    isGroup = false,
+): WaIncomingMessageEvent {
     return {
         key: {
-            remoteJid: '628123456789@s.whatsapp.net',
+            remoteJid: isGroup
+                ? '1234567890@g.us'
+                : '628123456789@s.whatsapp.net',
             id: crypto.randomUUID(),
             fromMe: false,
-            isGroup: false,
+            isGroup,
         },
         message: {
             conversation: text,

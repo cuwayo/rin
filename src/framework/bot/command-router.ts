@@ -9,6 +9,8 @@ import {
     commandCooldown,
     commandPermission,
     findCommand,
+    findSubcommand,
+    isCommandGroup,
 } from '../commands/command.decorator.ts'
 import type {
     CommandAuthorizationContext,
@@ -84,6 +86,17 @@ export class CommandRouter {
         const definition = findCommand(rawCommand)
         if (!definition) return
 
+        const subcommand =
+            isCommandGroup(definition) && args[0]
+                ? findSubcommand(definition, args[0])
+                : undefined
+        const commandArgs = subcommand ? args.slice(1) : args
+        const commandName = subcommand
+            ? `${definition.name} ${subcommand.name}`
+            : definition.name
+        const authorizationTargets = subcommand
+            ? [definition.type, subcommand.handler]
+            : [definition.type]
         const startedAt = performance.now()
         const senderAddresses = senderAddressesFor(event, selfJids)
         const senderJids = senderAddresses
@@ -93,8 +106,9 @@ export class CommandRouter {
             .map(userIdFromJid)
             .filter((id): id is string => id !== undefined)
         const trace = {
-            command: definition.name,
+            command: commandName,
             invokedAs: rawCommand.toLowerCase(),
+            subcommand: subcommand?.name,
             chatJid: event.key.remoteJid,
             messageId: event.key.id,
             fromMe: event.key.fromMe,
@@ -108,7 +122,7 @@ export class CommandRouter {
             event,
             message,
             prefix: this.config.prefix,
-            args,
+            args: commandArgs,
             senderJids,
             senderIds,
             isGroup: event.key.isGroup,
@@ -119,18 +133,18 @@ export class CommandRouter {
                     ? isGroupAdmin(event)
                     : Promise.resolve(false),
         }
-        const permission = commandPermission(definition.type)
+        const permissions = authorizationTargets.map(commandPermission)
         const authorization = await this.authorize(
-            permission,
+            permissions,
             authorizationContext,
-            commandChecks(definition.type),
+            authorizationTargets.flatMap(commandChecks),
         )
         if (!authorization.allowed) {
             this.logger.warn('Command execution denied', {
                 ...trace,
                 event: 'command.authorization',
                 outcome: 'denied',
-                permission,
+                permissions,
                 reason: authorization.reason,
                 durationMs: elapsedMilliseconds(startedAt),
                 err: authorization.error,
@@ -142,14 +156,16 @@ export class CommandRouter {
             return
         }
 
-        const cooldownMs = commandCooldown(definition.type)
+        const cooldownMs =
+            (subcommand && commandCooldown(subcommand.handler)) ??
+            commandCooldown(definition.type)
         const cooldownSender =
             senderJids.find((jid) => jid.endsWith('@s.whatsapp.net')) ??
             senderJids[0] ??
             senderIds[0]
         if (cooldownMs !== undefined && cooldownSender !== undefined) {
             const cooldown = this.cooldownTracker.tryAcquire(
-                definition.name,
+                commandName,
                 cooldownSender,
                 cooldownMs,
             )
@@ -175,7 +191,7 @@ export class CommandRouter {
             event,
             message,
             prefix: this.config.prefix,
-            args,
+            args: commandArgs,
             reply: (content) => responder.reply(event, content),
             send: (jid, content) => responder.send(jid, content),
             react: async (emoji, shouldRemoveAfterCommand = false) => {
@@ -186,7 +202,12 @@ export class CommandRouter {
         }
 
         try {
-            await this.container.resolve(definition.type).execute(context)
+            const command = this.container.resolve(definition.type)
+            if (subcommand) {
+                await subcommand.handler.call(command, context)
+            } else {
+                await command.execute(context)
+            }
             this.logger.info('Command execution completed', {
                 ...trace,
                 event: 'command.execution',
@@ -213,7 +234,7 @@ export class CommandRouter {
     }
 
     private async authorize(
-        permission: CommandPermission,
+        permissions: readonly CommandPermission[],
         context: CommandAuthorizationContext,
         checks: readonly CommandCheck[],
     ): Promise<AuthorizationResult> {
@@ -227,11 +248,13 @@ export class CommandRouter {
             return { allowed: true }
         }
 
-        const builtInAuthorization = await this.authorizePermission(
-            permission,
-            context,
-        )
-        if (!builtInAuthorization.allowed) return builtInAuthorization
+        for (const permission of permissions) {
+            const builtInAuthorization = await this.authorizePermission(
+                permission,
+                context,
+            )
+            if (!builtInAuthorization.allowed) return builtInAuthorization
+        }
 
         for (const check of checks) {
             try {

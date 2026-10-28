@@ -1,16 +1,16 @@
-import './commands/index.ts'
-import { CommandRouter } from './bot/command-router.ts'
-import { ZapoBot } from './bot/zapo-bot.ts'
-import { BOT_CONFIG, loadConfig } from './config.ts'
-import { Container } from './core/di.ts'
-import { APP_LOGGER, createAppLogger } from './core/logger.ts'
-import { StickerWorker } from './sticker/sticker-worker.ts'
+import { CommandRouter } from '../framework/bot/command-router.ts'
+import { ZapoBot } from '../framework/bot/zapo-bot.ts'
+import { loadCommands } from '../framework/commands/loader.ts'
+import { BOT_CONFIG, loadConfig } from '../framework/config.ts'
+import { Container } from '../framework/core/di.ts'
+import { APP_LOGGER, createAppLogger } from '../framework/core/logger.ts'
 
 export async function bootstrap(): Promise<void> {
     const container = new Container()
     let removeShutdownHooks: (() => void) | undefined
 
     try {
+        await loadCommands(new URL('./commands/', import.meta.url))
         const config = loadConfig()
         container.registerValue(Container, container)
         container.registerValue(BOT_CONFIG, config)
@@ -21,7 +21,6 @@ export async function bootstrap(): Promise<void> {
 
         // Resolve the object graph through the decorator-driven container.
         container.resolve(CommandRouter)
-        container.resolve(StickerWorker)
         const bot = container.resolve(ZapoBot)
         removeShutdownHooks = installShutdownHooks(container)
         await bot.start()

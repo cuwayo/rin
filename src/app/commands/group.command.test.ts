@@ -1,5 +1,17 @@
 import { expect, test } from 'bun:test'
-import type { CommandContext, GroupCommandActions } from './contracts.ts'
+import type { Logger, WaIncomingMessageEvent } from 'zapo-js'
+import { CommandCooldownTracker } from '../../framework/bot/command-cooldown.ts'
+import {
+    CommandRouter,
+    type MessageResponder,
+} from '../../framework/bot/command-router.ts'
+import type {
+    CommandContext,
+    GroupCommandActions,
+} from '../../framework/commands/contracts.ts'
+import type { BotConfig } from '../../framework/config.ts'
+import { Container } from '../../framework/core/di.ts'
+import type { RoleStore } from '../../framework/roles/role-store.ts'
 import { GroupCommand } from './group.command.ts'
 
 test('uses WhatsApp mention JIDs instead of rendered mention text', async () => {
@@ -92,6 +104,54 @@ test('reports the actual group-operation error without claiming missing admin ri
     ])
 })
 
+test('routes !group add through CommandRouter and its group responder', async () => {
+    const additions: string[][] = []
+    const replies: string[] = []
+    const responder = groupResponder(replies, {
+        addParticipants: async (participants) => {
+            additions.push([...participants])
+            return participants.map((jid) => ({
+                jid,
+                status: 'ok' as const,
+                code: 200,
+            }))
+        },
+    })
+
+    await groupRouter().handle(
+        groupCommandEvent('!group add 628111111111'),
+        responder,
+        async () => true,
+        [],
+    )
+
+    expect(additions).toEqual([['628111111111@s.whatsapp.net']])
+    expect(replies).toEqual(['Added 1/1 participant.'])
+})
+
+test('routes group aliases with sliced arguments and reports group responder errors', async () => {
+    const descriptions: Array<string | null> = []
+    const replies: string[] = []
+    const responder = groupResponder(replies, {
+        setDescription: async (description) => {
+            descriptions.push(description)
+            throw new Error('description update rejected')
+        },
+    })
+
+    await groupRouter().handle(
+        groupCommandEvent('!gc desc updated by router'),
+        responder,
+        async () => true,
+        [],
+    )
+
+    expect(descriptions).toEqual(['updated by router'])
+    expect(replies).toEqual([
+        'WhatsApp rejected the group update: description update rejected',
+    ])
+})
+
 function groupContext(
     args: readonly string[],
     overrides: Partial<GroupCommandActions> | undefined,
@@ -139,4 +199,76 @@ function groupContext(
         },
         replies,
     }
+}
+
+const routerConfig: BotConfig = {
+    prefix: '!',
+    sessionId: 'test',
+    authPath: ':memory:',
+    logLevel: 'info',
+    roleDbPath: ':memory:',
+}
+
+const silentLogger = {
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+} as unknown as Logger
+
+function groupRouter(): CommandRouter {
+    return new CommandRouter(
+        new Container(),
+        routerConfig,
+        {} as RoleStore,
+        new CommandCooldownTracker(),
+        silentLogger,
+    )
+}
+
+function groupResponder(
+    replies: string[],
+    overrides: Partial<GroupCommandActions>,
+): MessageResponder {
+    const group: GroupCommandActions = {
+        addParticipants: async () => [],
+        removeParticipants: async () => [],
+        promoteParticipants: async () => [],
+        demoteParticipants: async () => [],
+        setSubject: async () => undefined,
+        setDescription: async () => undefined,
+        setSetting: async () => undefined,
+        inviteCode: async () => 'invite-code',
+        revokeInvite: async () => 'new-invite-code',
+        info: async () => ({
+            subject: 'Test group',
+            participantCount: 3,
+            announcementOnly: false,
+            restrictInfoEdits: false,
+        }),
+        ...overrides,
+    }
+
+    return {
+        reply: async (_event, content) => {
+            if (typeof content === 'string') replies.push(content)
+        },
+        send: async () => undefined,
+        react: async () => undefined,
+        group: () => group,
+    }
+}
+
+function groupCommandEvent(text: string): WaIncomingMessageEvent {
+    return {
+        key: {
+            remoteJid: '1234567890@g.us',
+            participant: '628123456789@s.whatsapp.net',
+            id: crypto.randomUUID(),
+            fromMe: false,
+            isGroup: true,
+        },
+        message: {
+            conversation: text,
+        },
+    } as unknown as WaIncomingMessageEvent
 }
