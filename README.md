@@ -218,6 +218,28 @@ permission decorator. Checks may call `authorization.isBotModerator()` or
 fails closed and is logged. The configured superuser remains able to run every
 command, including commands with custom checks.
 
+### Command cooldowns
+
+Use `@Cooldown(milliseconds)` to limit each sender's executions of a command.
+Cooldowns are in-memory, begin after authorization succeeds but before the
+command runs, and reset if the bot restarts:
+
+```ts
+import { Command, Cooldown } from './command.decorator.ts'
+
+@Command({ name: 'render', description: 'Render an image.' })
+@Cooldown(30_000)
+@Injectable()
+export class RenderCommand implements BotCommand {
+    async execute(context: CommandContext): Promise<void> {
+        // ...
+    }
+}
+```
+
+The same sender may still run different commands; a command on cooldown replies
+with the remaining wait time.
+
 ## License
 
 Rin is licensed under the GNU General Public License v3.0 only. See [LICENSE](LICENSE).

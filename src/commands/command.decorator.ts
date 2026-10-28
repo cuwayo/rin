@@ -35,6 +35,7 @@ const checksByType = new WeakMap<
     Constructable<BotCommand>,
     readonly CommandCheck[]
 >()
+const cooldownsByType = new WeakMap<Constructable<BotCommand>, number>()
 
 export function Command(
     options: Omit<CommandOptions, 'aliases'> & {
@@ -107,6 +108,34 @@ export function commandPermission(
     type: Constructable<BotCommand>,
 ): CommandPermission {
     return permissionsByType.get(type) ?? 'public'
+}
+
+/**
+ * Limits each sender to one execution of a command during the given interval.
+ * The interval is measured in milliseconds.
+ */
+export function Cooldown(cooldownMs: number) {
+    if (!Number.isFinite(cooldownMs) || cooldownMs <= 0) {
+        throw new RangeError(
+            'Command cooldown must be a positive number of milliseconds.',
+        )
+    }
+
+    return (
+        target: Constructable<BotCommand>,
+        _context: ClassDecoratorContext,
+    ): void => {
+        if (cooldownsByType.has(target)) {
+            throw new Error(`${target.name} has multiple cooldown decorators.`)
+        }
+        cooldownsByType.set(target, cooldownMs)
+    }
+}
+
+export function commandCooldown(
+    type: Constructable<BotCommand>,
+): number | undefined {
+    return cooldownsByType.get(type)
 }
 
 /**

@@ -6,6 +6,7 @@ import type {
 import {
     type CommandPermission,
     commandChecks,
+    commandCooldown,
     commandPermission,
     findCommand,
 } from '../commands/command.decorator.ts'
@@ -21,6 +22,7 @@ import { Container, Injectable } from '../core/di.ts'
 import { normalizeUserJid, userIdFromJid } from '../core/jid.ts'
 import { APP_LOGGER } from '../core/logger.ts'
 import { RoleStore } from '../roles/role-store.ts'
+import { CommandCooldownTracker } from './command-cooldown.ts'
 import { parseIncomingMessage } from './message.ts'
 
 export interface MessageResponder {
@@ -44,12 +46,19 @@ interface AuthorizationResult {
     readonly error?: unknown
 }
 
-@Injectable([Container, BOT_CONFIG, RoleStore, APP_LOGGER])
+@Injectable([
+    Container,
+    BOT_CONFIG,
+    RoleStore,
+    CommandCooldownTracker,
+    APP_LOGGER,
+])
 export class CommandRouter {
     constructor(
         private readonly container: Container,
         private readonly config: BotConfig,
         private readonly roleStore: RoleStore,
+        private readonly cooldownTracker: CommandCooldownTracker,
         private readonly logger: Logger,
     ) {}
 
@@ -128,6 +137,34 @@ export class CommandRouter {
                 'You do not have permission to use this command.',
             )
             return
+        }
+
+        const cooldownMs = commandCooldown(definition.type)
+        const cooldownSender =
+            senderJids.find((jid) => jid.endsWith('@s.whatsapp.net')) ??
+            senderJids[0] ??
+            senderIds[0]
+        if (cooldownMs !== undefined && cooldownSender !== undefined) {
+            const cooldown = this.cooldownTracker.tryAcquire(
+                definition.name,
+                cooldownSender,
+                cooldownMs,
+            )
+            if (!cooldown.allowed) {
+                const remainingMs = cooldown.remainingMs ?? cooldownMs
+                this.logger.warn('Command execution blocked by cooldown', {
+                    ...trace,
+                    event: 'command.cooldown',
+                    outcome: 'denied',
+                    cooldownMs,
+                    remainingMs,
+                })
+                await responder.reply(
+                    event,
+                    `This command is on cooldown. Try again in ${formatCooldown(remainingMs)}.`,
+                )
+                return
+            }
         }
 
         let removeReactionAfterCommand = false
@@ -266,4 +303,13 @@ function normalizeCheckResult(
 
 function elapsedMilliseconds(startedAt: number): number {
     return Math.round((performance.now() - startedAt) * 100) / 100
+}
+
+function formatCooldown(remainingMs: number): string {
+    const remainingSeconds = Math.max(1, Math.ceil(remainingMs / 1_000))
+    const minutes = Math.floor(remainingSeconds / 60)
+    const seconds = remainingSeconds % 60
+    if (minutes === 0) return `${seconds}s`
+    if (seconds === 0) return `${minutes}m`
+    return `${minutes}m ${seconds}s`
 }
