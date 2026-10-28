@@ -183,9 +183,6 @@ export class CommandRouter {
 
         try {
             await this.container.resolve(definition.type).execute(context)
-            if (removeReactionAfterCommand) {
-                await responder.react(event, '')
-            }
             this.logger.info('Command execution completed', {
                 ...trace,
                 event: 'command.execution',
@@ -200,7 +197,14 @@ export class CommandRouter {
                 durationMs: elapsedMilliseconds(startedAt),
                 err: error,
             })
-            throw error
+            await responder.reply(
+                event,
+                'Something went wrong while running this command. Please try again.',
+            )
+        } finally {
+            if (removeReactionAfterCommand) {
+                await responder.react(event, '')
+            }
         }
     }
 

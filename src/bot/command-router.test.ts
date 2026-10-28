@@ -22,6 +22,19 @@ class RouterCooldownCommand implements BotCommand {
     }
 }
 
+@Command({
+    name: 'router-failure-test',
+    description: 'Test command failures in the router.',
+})
+@Injectable()
+class RouterFailureCommand implements BotCommand {
+    async execute(context: CommandContext): Promise<void> {
+        await context.react('⏳', true)
+        throw new Error('expected test failure')
+    }
+}
+void RouterFailureCommand
+
 test('does not execute a command again while its sender cooldown is active', async () => {
     RouterCooldownCommand.executions = 0
     let now = 0
@@ -49,6 +62,39 @@ test('does not execute a command again while its sender cooldown is active', asy
     expect(replies).toEqual(['This command is on cooldown. Try again in 1s.'])
 })
 
+test('reports failures and clears reactions marked for removal', async () => {
+    const router = new CommandRouter(
+        new Container(),
+        testConfig,
+        {} as RoleStore,
+        new CommandCooldownTracker(),
+        silentLogger,
+    )
+    const replies: unknown[] = []
+    const reactions: string[] = []
+    const responder: MessageResponder = {
+        reply: async (_event, content) => {
+            replies.push(content)
+        },
+        send: async () => undefined,
+        react: async (_event, emoji) => {
+            reactions.push(emoji)
+        },
+    }
+
+    await router.handle(
+        commandEvent('!router-failure-test'),
+        responder,
+        async () => false,
+        [],
+    )
+
+    expect(replies).toEqual([
+        'Something went wrong while running this command. Please try again.',
+    ])
+    expect(reactions).toEqual(['⏳', ''])
+})
+
 const testConfig: BotConfig = {
     prefix: '!',
     sessionId: 'test',
@@ -63,7 +109,7 @@ const silentLogger = {
     error: () => undefined,
 } as unknown as Logger
 
-function commandEvent(): WaIncomingMessageEvent {
+function commandEvent(text = '!router-cooldown-test'): WaIncomingMessageEvent {
     return {
         key: {
             remoteJid: '628123456789@s.whatsapp.net',
@@ -72,7 +118,7 @@ function commandEvent(): WaIncomingMessageEvent {
             isGroup: false,
         },
         message: {
-            conversation: '!router-cooldown-test',
+            conversation: text,
         },
     } as unknown as WaIncomingMessageEvent
 }
