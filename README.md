@@ -48,6 +48,15 @@ Session credentials are stored at the configured `BOT_AUTH_PATH`. Keep this file
 | `!help`           | Lists registered commands.                                                                 |
 | `!ping`           | Verifies that the service is responding.                                                   |
 | `!sticker` (`!s`) | Converts a supported image or video attached to, or quoted by, the command (up to 16 MiB). |
+| `!group` (`!gc`)  | Lets group admins manage the current group.                                                |
+
+`!group` is available to group admins (and the configured superuser) in the
+current group. It supports adding, removing, promoting, and demoting members;
+changing the subject or description; controlling announcement-only and
+restricted-info modes; viewing or rotating the invite link; and viewing basic
+group details. Supply a phone number or WhatsApp JID to add a member; use a
+WhatsApp mention for other member actions. Run `!group` without an action to
+see its usage.
 
 ## Development
 

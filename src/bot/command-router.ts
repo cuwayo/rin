@@ -15,6 +15,7 @@ import type {
     CommandCheck,
     CommandCheckResult,
     CommandContext,
+    GroupCommandActions,
 } from '../commands/contracts.ts'
 import type { BotConfig } from '../config.ts'
 import { BOT_CONFIG } from '../config.ts'
@@ -32,6 +33,8 @@ export interface MessageResponder {
     ): Promise<void>
     send(jid: string, content: WaSendMessageContent): Promise<void>
     react(event: WaIncomingMessageEvent, emoji: string): Promise<void>
+    /** Returns operations scoped to the incoming message's group, if any. */
+    group?(event: WaIncomingMessageEvent): GroupCommandActions | undefined
 }
 
 export type GroupAdminResolver = (
@@ -179,6 +182,7 @@ export class CommandRouter {
                 removeReactionAfterCommand ||= shouldRemoveAfterCommand
                 await responder.react(event, emoji)
             },
+            group: responder.group?.(event),
         }
 
         try {

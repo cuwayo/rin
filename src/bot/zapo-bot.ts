@@ -4,6 +4,7 @@ import { createSqliteStore } from '@zapo-js/store-sqlite'
 import * as terminalQr from 'qrcode-terminal'
 import type { Logger, WaIncomingMessageEvent } from 'zapo-js'
 import { createStore, WaClient } from 'zapo-js'
+import type { GroupCommandActions } from '../commands/contracts.ts'
 import type { BotConfig } from '../config.ts'
 import { BOT_CONFIG } from '../config.ts'
 import { Injectable } from '../core/di.ts'
@@ -169,6 +170,8 @@ export class ZapoBot implements AsyncDisposable {
                             target: incoming,
                         })
                     },
+                    group: (incoming) =>
+                        this.groupActionsForMessage(client, incoming),
                 },
                 (incoming) => this.isSenderGroupAdmin(client, incoming),
                 selfJids(client),
@@ -180,6 +183,98 @@ export class ZapoBot implements AsyncDisposable {
                 chatJid: event.key.remoteJid,
                 err: error,
             })
+        }
+    }
+
+    private groupActionsForMessage(
+        client: InstanceType<typeof WaClient>,
+        event: WaIncomingMessageEvent,
+    ): GroupCommandActions | undefined {
+        const groupJid = event.key.remoteJid
+        if (!event.key.isGroup || !groupJid) return undefined
+
+        let metadataRequest:
+            | ReturnType<
+                  InstanceType<typeof WaClient>['group']['queryGroupMetadata']
+              >
+            | undefined
+        const metadata = () =>
+            (metadataRequest ??= client.group.queryGroupMetadata(groupJid))
+        const targetGroupJid = async () => (await metadata()).jid
+        const targetParticipants = async (
+            requestedParticipants: readonly string[],
+        ): Promise<readonly string[]> => {
+            const participantsByAddress = new Map<string, string>()
+            for (const participant of (await metadata()).participants) {
+                for (const address of [
+                    participant.jid,
+                    participant.lid,
+                    participant.phoneNumber,
+                ]) {
+                    const normalized = address
+                        ? normalizeUserJid(address)
+                        : undefined
+                    if (normalized) {
+                        participantsByAddress.set(normalized, participant.jid)
+                    }
+                }
+            }
+            return requestedParticipants.map(
+                (participant) =>
+                    participantsByAddress.get(
+                        normalizeUserJid(participant) ?? '',
+                    ) ?? participant,
+            )
+        }
+
+        return {
+            addParticipants: async (participants) =>
+                client.group.addParticipants(
+                    await targetGroupJid(),
+                    await targetParticipants(participants),
+                ),
+            removeParticipants: async (participants) =>
+                client.group.removeParticipants(
+                    await targetGroupJid(),
+                    await targetParticipants(participants),
+                ),
+            promoteParticipants: async (participants) =>
+                client.group.promoteParticipants(
+                    await targetGroupJid(),
+                    await targetParticipants(participants),
+                ),
+            demoteParticipants: async (participants) =>
+                client.group.demoteParticipants(
+                    await targetGroupJid(),
+                    await targetParticipants(participants),
+                ),
+            setSubject: async (subject) =>
+                client.group.setSubject(await targetGroupJid(), subject),
+            setDescription: async (description) =>
+                client.group.setDescription(
+                    await targetGroupJid(),
+                    description,
+                ),
+            setSetting: async (setting, enabled) =>
+                client.group.setSetting(
+                    await targetGroupJid(),
+                    setting,
+                    enabled,
+                ),
+            inviteCode: async () =>
+                client.group.queryInviteCode(await targetGroupJid()),
+            revokeInvite: async () =>
+                (await client.group.revokeInvite(await targetGroupJid())).code,
+            info: async () => {
+                const currentMetadata = await metadata()
+                return {
+                    subject: currentMetadata.subject,
+                    description: currentMetadata.desc,
+                    participantCount: currentMetadata.participants.length,
+                    announcementOnly: currentMetadata.announce,
+                    restrictInfoEdits: currentMetadata.restrict,
+                }
+            },
         }
     }
 

@@ -53,8 +53,59 @@ export interface CommandContext {
      * the reaction once the command finishes; it defaults to false.
      */
     react(emoji: string, removeAfterCommand?: boolean): Promise<void>
+    /**
+     * Group-management operations scoped to the chat that invoked the command.
+     * This is undefined outside of a group chat.
+     */
+    readonly group?: GroupCommandActions
 }
 
 export interface BotCommand {
     execute(context: CommandContext): Promise<void>
+}
+
+/** The outcome of an operation affecting one group participant. */
+export interface GroupParticipantActionResult {
+    readonly jid: string
+    readonly status: 'ok' | 'error'
+    readonly code: number
+}
+
+/**
+ * Safe group-management operations exposed to commands.
+ *
+ * Implementations always target the invoking group, so a command cannot
+ * mutate an arbitrary group by supplying a JID in its arguments.
+ */
+export interface GroupCommandActions {
+    addParticipants(
+        participants: readonly string[],
+    ): Promise<readonly GroupParticipantActionResult[]>
+    removeParticipants(
+        participants: readonly string[],
+    ): Promise<readonly GroupParticipantActionResult[]>
+    promoteParticipants(
+        participants: readonly string[],
+    ): Promise<readonly GroupParticipantActionResult[]>
+    demoteParticipants(
+        participants: readonly string[],
+    ): Promise<readonly GroupParticipantActionResult[]>
+    setSubject(subject: string): Promise<void>
+    setDescription(description: string | null): Promise<void>
+    setSetting(
+        setting: 'announcement' | 'restrict',
+        enabled: boolean,
+    ): Promise<void>
+    inviteCode(): Promise<string>
+    revokeInvite(): Promise<string>
+    info(): Promise<GroupCommandInfo>
+}
+
+/** The group details deliberately made available to group commands. */
+export interface GroupCommandInfo {
+    readonly subject: string
+    readonly description?: string
+    readonly participantCount: number
+    readonly announcementOnly: boolean
+    readonly restrictInfoEdits: boolean
 }
