@@ -1,9 +1,7 @@
 ---
 
 name: google-markdown-style
-description: Create, edit, or review Markdown documentation using Google's Markdown
-style guide. Use for repository docs, READMEs, guides, and Markdown reference
-material; not for prose-only writing or non-Markdown document formats.
+description: "Create or review Google-style Markdown documentation."
 ---
 
 # Google Markdown Style
