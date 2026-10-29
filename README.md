@@ -117,6 +117,12 @@ Biome enforces two-space indentation and the recommended TypeScript lint rules.
 The GitHub Actions workflow runs `bun run verify` for every push and pull
 request.
 
+### Import aliases
+
+Use `@/` for imports from `src/`; for example,
+`@/framework/core/di.ts` resolves to `src/framework/core/di.ts`. Keep relative
+imports for modules in the same directory.
+
 ## Project layout
 
 `src/framework/` contains the reusable bot runtime: the command router,
@@ -134,12 +140,12 @@ Create a decorated command class under `src/app/commands`, for example
 `src/app/commands/echo.command.ts`:
 
 ```ts
-import { Injectable } from '../../framework/core/di.ts';
-import { Command } from '../../framework/commands/command.decorator.ts';
+import { Command } from '@/framework/commands/command.decorator.ts';
+import { Injectable } from '@/framework/core/di.ts';
 import type {
   BotCommand,
   CommandContext,
-} from '../../framework/commands/contracts.ts';
+} from '@/framework/commands/contracts.ts';
 
 @Command({
   name: 'echo',
@@ -163,7 +169,7 @@ container.
 typed symbol tokens, factories, transient services, and request/job scopes:
 
 ```ts
-import { Container, createToken, Injectable } from './src/framework/core/di.ts';
+import { Container, createToken, Injectable } from '@/framework/core/di.ts';
 
 const container = new Container();
 
@@ -266,10 +272,7 @@ and lazy role resolvers. It can be synchronous or asynchronous, and can be
 packaged into a reusable decorator in the same style as discord.py checks:
 
 ```ts
-import {
-  Command,
-  Require,
-} from '../../framework/commands/command.decorator.ts';
+import { Command, Require } from '@/framework/commands/command.decorator.ts';
 
 const InAllowedGroup = (groupJid: string) =>
   Require((authorization) => {
@@ -302,16 +305,16 @@ its methods. This follows Discord.Net’s group/module style while keeping the
 current TypeScript decorator and OOP model:
 
 ```ts
-import { Injectable } from '../../framework/core/di.ts';
+import { Injectable } from '@/framework/core/di.ts';
 import {
   Command,
   Group,
   GroupAdmin,
-} from '../../framework/commands/command.decorator.ts';
+} from '@/framework/commands/command.decorator.ts';
 import type {
   BotCommand,
   CommandContext,
-} from '../../framework/commands/contracts.ts';
+} from '@/framework/commands/contracts.ts';
 
 @Group({
   name: 'poll',
@@ -358,10 +361,7 @@ Cooldowns are in-memory, begin after authorization succeeds but before the
 command runs, and reset if the bot restarts:
 
 ```ts
-import {
-  Command,
-  Cooldown,
-} from '../../framework/commands/command.decorator.ts';
+import { Command, Cooldown } from '@/framework/commands/command.decorator.ts';
 
 @Command({ name: 'render', description: 'Render an image.' })
 @Cooldown(30_000)
