@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import type { CommandContext } from '../../framework/commands/contracts.ts';
+import type { CommandContext } from '@/framework/commands/contracts.ts';
 import { executeJavaScript } from './cardinal-execution.ts';
 
 test('evaluates JavaScript in a worker and preserves a safe command snapshot', async () => {

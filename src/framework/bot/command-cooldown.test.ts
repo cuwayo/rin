@@ -1,6 +1,12 @@
 import { expect, test } from 'bun:test';
-import { Cooldown, commandCooldown } from '../commands/command.decorator.ts';
-import type { BotCommand, CommandContext } from '../commands/contracts.ts';
+import {
+  Cooldown,
+  commandCooldown,
+} from '@/framework/commands/command.decorator.ts';
+import type {
+  BotCommand,
+  CommandContext,
+} from '@/framework/commands/contracts.ts';
 import { CommandCooldownTracker } from './command-cooldown.ts';
 
 test('allows a sender again once a command cooldown expires', () => {

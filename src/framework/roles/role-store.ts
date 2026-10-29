@@ -1,9 +1,9 @@
 import { Database } from 'bun:sqlite';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { BOT_CONFIG, type BotConfig } from '../config.ts';
-import { Injectable } from '../core/di.ts';
-import { normalizeUserJid } from '../core/jid.ts';
+import { BOT_CONFIG, type BotConfig } from '@/framework/config.ts';
+import { Injectable } from '@/framework/core/di.ts';
+import { normalizeUserJid } from '@/framework/core/jid.ts';
 
 interface ModeratorRow {
   readonly jid: string;

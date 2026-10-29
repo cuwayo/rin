@@ -5,11 +5,11 @@ import {
   TypeSafeClient,
 } from '@typesafe-ai/sdk';
 import type { Logger, WaIncomingMessageEvent } from 'zapo-js';
-import type { ParsedMediaMessage } from '../bot/message.ts';
-import { parseIncomingMessage } from '../bot/message.ts';
-import { BOT_CONFIG, type BotConfig } from '../config.ts';
-import { Injectable } from '../core/di.ts';
-import { APP_LOGGER } from '../core/logger.ts';
+import type { ParsedMediaMessage } from '@/framework/bot/message.ts';
+import { parseIncomingMessage } from '@/framework/bot/message.ts';
+import { BOT_CONFIG, type BotConfig } from '@/framework/config.ts';
+import { Injectable } from '@/framework/core/di.ts';
+import { APP_LOGGER } from '@/framework/core/logger.ts';
 import {
   type GroupFilterRequirement,
   GroupModerationStore,

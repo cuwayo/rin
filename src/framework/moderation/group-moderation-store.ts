@@ -1,8 +1,8 @@
 import { Database } from 'bun:sqlite';
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { BOT_CONFIG, type BotConfig } from '../config.ts';
-import { Injectable } from '../core/di.ts';
+import { BOT_CONFIG, type BotConfig } from '@/framework/config.ts';
+import { Injectable } from '@/framework/core/di.ts';
 
 export const MAX_FILTER_REQUIREMENTS = 10;
 

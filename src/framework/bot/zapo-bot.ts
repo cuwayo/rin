@@ -4,17 +4,17 @@ import { createSqliteStore } from '@zapo-js/store-sqlite';
 import * as terminalQr from 'qrcode-terminal';
 import type { Logger, WaGroupMetadata, WaIncomingMessageEvent } from 'zapo-js';
 import { createStore, WaClient } from 'zapo-js';
-import type { GroupCommandActions } from '../commands/contracts.ts';
-import type { BotConfig } from '../config.ts';
-import { BOT_CONFIG } from '../config.ts';
-import { Injectable } from '../core/di.ts';
-import { normalizeUserJid } from '../core/jid.ts';
-import { APP_LOGGER } from '../core/logger.ts';
-import { GroupMetadataCache } from '../groups/group-metadata-cache.ts';
+import type { GroupCommandActions } from '@/framework/commands/contracts.ts';
+import type { BotConfig } from '@/framework/config.ts';
+import { BOT_CONFIG } from '@/framework/config.ts';
+import { Injectable } from '@/framework/core/di.ts';
+import { normalizeUserJid } from '@/framework/core/jid.ts';
+import { APP_LOGGER } from '@/framework/core/logger.ts';
+import { GroupMetadataCache } from '@/framework/groups/group-metadata-cache.ts';
 import {
   BadWordFilter,
   type GroupFilterWarningStatus,
-} from '../moderation/bad-word-filter.ts';
+} from '@/framework/moderation/bad-word-filter.ts';
 import { CommandRouter } from './command-router.ts';
 
 @Injectable([

@@ -1,17 +1,17 @@
 import { expect, test } from 'bun:test';
 import type { Logger, WaIncomingMessageEvent } from 'zapo-js';
-import { CommandCooldownTracker } from '../../framework/bot/command-cooldown.ts';
+import { CommandCooldownTracker } from '@/framework/bot/command-cooldown.ts';
 import {
   CommandRouter,
   type MessageResponder,
-} from '../../framework/bot/command-router.ts';
+} from '@/framework/bot/command-router.ts';
 import type {
   CommandContext,
   GroupCommandActions,
-} from '../../framework/commands/contracts.ts';
-import type { BotConfig } from '../../framework/config.ts';
-import { Container } from '../../framework/core/di.ts';
-import type { RoleStore } from '../../framework/roles/role-store.ts';
+} from '@/framework/commands/contracts.ts';
+import type { BotConfig } from '@/framework/config.ts';
+import { Container } from '@/framework/core/di.ts';
+import type { RoleStore } from '@/framework/roles/role-store.ts';
 import { GroupCommand } from './group.command.ts';
 
 test('uses WhatsApp mention JIDs instead of rendered mention text', async () => {

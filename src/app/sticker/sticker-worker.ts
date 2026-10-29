@@ -3,7 +3,7 @@ import {
   type NativeStickerSource,
   type NativeStickerTranscodeOptions,
 } from '@rin-ts/sticker';
-import { Injectable } from '../../framework/core/di.ts';
+import { Injectable } from '@/framework/core/di.ts';
 
 @Injectable()
 export class StickerWorker implements AsyncDisposable {

@@ -5,11 +5,14 @@ import {
   Cooldown,
   Group,
   GroupAdmin,
-} from '../commands/command.decorator.ts';
-import type { BotCommand, CommandContext } from '../commands/contracts.ts';
-import type { BotConfig } from '../config.ts';
-import { Container, Injectable } from '../core/di.ts';
-import type { RoleStore } from '../roles/role-store.ts';
+} from '@/framework/commands/command.decorator.ts';
+import type {
+  BotCommand,
+  CommandContext,
+} from '@/framework/commands/contracts.ts';
+import type { BotConfig } from '@/framework/config.ts';
+import { Container, Injectable } from '@/framework/core/di.ts';
+import type { RoleStore } from '@/framework/roles/role-store.ts';
 import { CommandCooldownTracker } from './command-cooldown.ts';
 import { CommandRouter, type MessageResponder } from './command-router.ts';
 

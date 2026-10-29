@@ -1,9 +1,6 @@
 import { expect, test } from 'bun:test';
-import {
-  Command,
-  Cooldown,
-} from '../../framework/commands/command.decorator.ts';
-import type { CommandContext } from '../../framework/commands/contracts.ts';
+import { Command, Cooldown } from '@/framework/commands/command.decorator.ts';
+import type { CommandContext } from '@/framework/commands/contracts.ts';
 import { CardinalCommand } from './cardinal.command.ts';
 import { GroupCommand } from './group.command.ts';
 import { HelpCommand } from './help.command.ts';

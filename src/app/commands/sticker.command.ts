@@ -5,13 +5,13 @@ import {
   NativeStickerWorkerTransportError,
 } from '@rin-ts/sticker';
 import { downloadMediaMessage } from 'zapo-js';
-import { Command } from '../../framework/commands/command.decorator.ts';
+import { StickerWorker } from '@/app/sticker/sticker-worker.ts';
+import { Command } from '@/framework/commands/command.decorator.ts';
 import type {
   BotCommand,
   CommandContext,
-} from '../../framework/commands/contracts.ts';
-import { Injectable } from '../../framework/core/di.ts';
-import { StickerWorker } from '../sticker/sticker-worker.ts';
+} from '@/framework/commands/contracts.ts';
+import { Injectable } from '@/framework/core/di.ts';
 
 const maximumSourceBytes = 16 * 1024 * 1024;
 

@@ -9,12 +9,12 @@ import {
   listCommands,
   type RegisteredCommand,
   type SubcommandDefinition,
-} from '../../framework/commands/command.decorator.ts';
+} from '@/framework/commands/command.decorator.ts';
 import type {
   BotCommand,
   CommandContext,
-} from '../../framework/commands/contracts.ts';
-import { Injectable } from '../../framework/core/di.ts';
+} from '@/framework/commands/contracts.ts';
+import { Injectable } from '@/framework/core/di.ts';
 
 @Command({
   name: 'help',

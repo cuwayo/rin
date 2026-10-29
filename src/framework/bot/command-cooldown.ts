@@ -1,4 +1,4 @@
-import { Injectable } from '../core/di.ts';
+import { Injectable } from '@/framework/core/di.ts';
 
 export interface CooldownAttempt {
   readonly allowed: boolean;

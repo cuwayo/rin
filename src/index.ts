@@ -1,3 +1,3 @@
-import { bootstrap } from './app/bootstrap.ts';
+import { bootstrap } from '@/app/bootstrap.ts';
 
 await bootstrap();

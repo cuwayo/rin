@@ -1,5 +1,5 @@
 import type { WaGroupMetadata } from 'zapo-js';
-import { Injectable } from '../core/di.ts';
+import { Injectable } from '@/framework/core/di.ts';
 
 type MetadataLoader = () => Promise<WaGroupMetadata>;
 

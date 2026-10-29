@@ -1,9 +1,9 @@
-import { CommandRouter } from '../framework/bot/command-router.ts';
-import { ZapoBot } from '../framework/bot/zapo-bot.ts';
-import { loadCommands } from '../framework/commands/loader.ts';
-import { BOT_CONFIG, loadConfig } from '../framework/config.ts';
-import { Container } from '../framework/core/di.ts';
-import { APP_LOGGER, createAppLogger } from '../framework/core/logger.ts';
+import { CommandRouter } from '@/framework/bot/command-router.ts';
+import { ZapoBot } from '@/framework/bot/zapo-bot.ts';
+import { loadCommands } from '@/framework/commands/loader.ts';
+import { BOT_CONFIG, loadConfig } from '@/framework/config.ts';
+import { Container } from '@/framework/core/di.ts';
+import { APP_LOGGER, createAppLogger } from '@/framework/core/logger.ts';
 
 export async function bootstrap(): Promise<void> {
   const container = new Container();

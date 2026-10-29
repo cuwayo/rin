@@ -1,6 +1,6 @@
 import type { WaIncomingMessageEvent, WaSendMessageContent } from 'zapo-js';
-import type { ParsedMessage } from '../bot/message.ts';
-import type { GroupFilterRequirement } from '../moderation/group-moderation-store.ts';
+import type { ParsedMessage } from '@/framework/bot/message.ts';
+import type { GroupFilterRequirement } from '@/framework/moderation/group-moderation-store.ts';
 
 /**
  * Data and safe role resolvers provided to an authorization check.

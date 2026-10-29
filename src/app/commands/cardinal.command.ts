@@ -1,19 +1,19 @@
 import {
+  executeJavaScript,
+  executeShell,
+} from '@/app/utils/cardinal-execution.ts';
+import {
   Command,
   Group,
   Superuser,
-} from '../../framework/commands/command.decorator.ts';
+} from '@/framework/commands/command.decorator.ts';
 import type {
   BotCommand,
   CommandContext,
-} from '../../framework/commands/contracts.ts';
-import { Injectable } from '../../framework/core/di.ts';
-import { normalizeUserJid } from '../../framework/core/jid.ts';
-import { RoleStore } from '../../framework/roles/role-store.ts';
-import {
-  executeJavaScript,
-  executeShell,
-} from '../utils/cardinal-execution.ts';
+} from '@/framework/commands/contracts.ts';
+import { Injectable } from '@/framework/core/di.ts';
+import { normalizeUserJid } from '@/framework/core/jid.ts';
+import { RoleStore } from '@/framework/roles/role-store.ts';
 
 @Group({
   name: 'cardinal',

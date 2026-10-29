@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
 import type { Logger, WaGroupMetadata, WaIncomingMessageEvent } from 'zapo-js';
-import type { GroupCommandActions } from '../commands/contracts.ts';
-import { GroupMetadataCache } from '../groups/group-metadata-cache.ts';
-import { BadWordFilter } from '../moderation/bad-word-filter.ts';
-import { GroupModerationStore } from '../moderation/group-moderation-store.ts';
+import type { GroupCommandActions } from '@/framework/commands/contracts.ts';
+import { GroupMetadataCache } from '@/framework/groups/group-metadata-cache.ts';
+import { BadWordFilter } from '@/framework/moderation/bad-word-filter.ts';
+import { GroupModerationStore } from '@/framework/moderation/group-moderation-store.ts';
 import { ZapoBot } from './zapo-bot.ts';
 
 test('warns without revoking or removing when the bot is not a group admin', async () => {

@@ -1,4 +1,4 @@
-import type { Constructable } from '../core/di.ts';
+import type { Constructable } from '@/framework/core/di.ts';
 import type { BotCommand, CommandCheck, CommandContext } from './contracts.ts';
 
 /**
