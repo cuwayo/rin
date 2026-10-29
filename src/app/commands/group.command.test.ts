@@ -82,6 +82,152 @@ test('updates announcement-only mode', async () => {
     expect(replies).toEqual(['Announcement-only messages enabled.'])
 })
 
+test('restricts invite-link sharing to group admins', async () => {
+    const calls: boolean[] = []
+    const { context, replies } = groupContext(['link-sharing', 'off'], {
+        setInviteLinkSharing: async (enabled) => {
+            calls.push(enabled)
+        },
+    })
+
+    await new GroupCommand().execute(context)
+
+    expect(calls).toEqual([false])
+    expect(replies).toEqual([
+        'Only group admins can now share the group invite link.',
+    ])
+})
+
+test('enables the Jev bad-word filter for the invoking group', async () => {
+    const calls: boolean[] = []
+    const { context, replies } = groupContext(['filter', 'on'], {
+        setBadWordFilter: async (enabled) => {
+            calls.push(enabled)
+            return { enabled, active: true }
+        },
+    })
+
+    await new GroupCommand().execute(context)
+
+    expect(calls).toEqual([true])
+    expect(replies).toEqual(['Jev bad-word filtering enabled for this group.'])
+})
+
+test('keeps the saved filter setting pending when Jev has no API key', async () => {
+    const calls: boolean[] = []
+    const { context, replies } = groupContext(['filter', 'on'], {
+        setBadWordFilter: async (enabled) => {
+            calls.push(enabled)
+            return { enabled, active: false }
+        },
+    })
+
+    await new GroupCommand().execute(context)
+
+    expect(calls).toEqual([true])
+    expect(replies).toEqual([
+        'Jev bad-word filtering is enabled for this group but inactive until a TypeSafe API key is configured.',
+    ])
+})
+
+test('adds a custom Jev filter requirement for the invoking group', async () => {
+    const requirements: string[] = []
+    const { context, replies } = groupContext(
+        ['filter', 'requirement', 'add', 'No links or NSFW topics'],
+        {
+            addFilterRequirement: async (requirement) => {
+                requirements.push(requirement)
+                return { id: 7, requirement }
+            },
+        },
+    )
+
+    await new GroupCommand().execute(context)
+
+    expect(requirements).toEqual(['No links or NSFW topics'])
+    expect(replies).toEqual(['Filter requirement 7 added.'])
+})
+
+test('lists and removes custom Jev filter requirements', async () => {
+    const removed: number[] = []
+    const listed = groupContext(['filter', 'requirement', 'list'], {
+        listFilterRequirements: async () => [
+            { id: 4, requirement: 'No links' },
+            { id: 9, requirement: 'No NSFW topics' },
+        ],
+    })
+
+    await new GroupCommand().execute(listed.context)
+
+    expect(listed.replies).toEqual([
+        'Custom filter requirements:\n4. No links\n9. No NSFW topics',
+    ])
+
+    const removal = groupContext(['filter', 'requirement', 'remove', '9'], {
+        removeFilterRequirement: async (id) => {
+            removed.push(id)
+            return true
+        },
+    })
+
+    await new GroupCommand().execute(removal.context)
+
+    expect(removed).toEqual([9])
+    expect(removal.replies).toEqual(['Filter requirement 9 removed.'])
+})
+
+test('configures the warning limit before automatic member removal', async () => {
+    const limits: Array<number | undefined> = []
+    const { context, replies } = groupContext(['filter', 'warnings', '3'], {
+        setFilterWarningLimit: async (limit) => {
+            limits.push(limit)
+        },
+    })
+
+    await new GroupCommand().execute(context)
+
+    expect(limits).toEqual([3])
+    expect(replies).toEqual([
+        'The bot will attempt to remove members after 3 filter warnings.',
+    ])
+})
+
+test('resets warnings using WhatsApp mention metadata despite rendered mention arguments', async () => {
+    const clearedParticipants: string[][] = []
+    const { context, replies } = groupContext(
+        ['filter', 'warnings', 'reset', '@628111111111'],
+        {
+            clearFilterWarnings: async (participants) => {
+                clearedParticipants.push([...participants])
+            },
+        },
+        ['628111111111@lid'],
+    )
+
+    await new GroupCommand().execute(context)
+
+    expect(clearedParticipants).toEqual([['628111111111@lid']])
+    expect(replies).toEqual(['Filter warnings reset for 1 member.'])
+})
+
+test('does not clear requirements when clear has trailing arguments', async () => {
+    let calls = 0
+    const { context, replies } = groupContext(
+        ['filter', 'requirement', 'clear', 'anything'],
+        {
+            clearFilterRequirements: async () => {
+                calls += 1
+                return 1
+            },
+        },
+    )
+
+    await new GroupCommand().execute(context)
+
+    expect(calls).toBe(0)
+    expect(replies).toEqual(['Usage: !group filter requirement clear'])
+})
+
 test('does not expose group operations outside a group', async () => {
     const { context, replies } = groupContext(['info'], undefined)
 
@@ -90,7 +236,7 @@ test('does not expose group operations outside a group', async () => {
     expect(replies).toEqual(['This command can only be used in a group.'])
 })
 
-test('reports the actual group-operation error without claiming missing admin rights', async () => {
+test('reports the actual group-operation error without assuming WhatsApp rejected it', async () => {
     const { context, replies } = groupContext(['announce', 'on'], {
         setSetting: async () => {
             throw new Error('group.setSetting: IQ error 403 (not-authorized)')
@@ -100,7 +246,21 @@ test('reports the actual group-operation error without claiming missing admin ri
     await new GroupCommand().execute(context)
 
     expect(replies).toEqual([
-        'WhatsApp rejected the group update: group.setSetting: IQ error 403 (not-authorized)',
+        'Could not complete the group update: group.setSetting: IQ error 403 (not-authorized)',
+    ])
+})
+
+test('identifies a timed-out group query without calling it a WhatsApp rejection', async () => {
+    const { context, replies } = groupContext(['announce', 'on'], {
+        setSetting: async () => {
+            throw new Error('queryGroupMetadata timeout')
+        },
+    })
+
+    await new GroupCommand().execute(context)
+
+    expect(replies).toEqual([
+        'The group request timed out before it completed. Please try again.',
     ])
 })
 
@@ -148,7 +308,7 @@ test('routes group aliases with sliced arguments and reports group responder err
 
     expect(descriptions).toEqual(['updated by router'])
     expect(replies).toEqual([
-        'WhatsApp rejected the group update: description update rejected',
+        'Could not complete the group update: description update rejected',
     ])
 })
 
@@ -166,6 +326,15 @@ function groupContext(
         setSubject: async () => undefined,
         setDescription: async () => undefined,
         setSetting: async () => undefined,
+        setInviteLinkSharing: async () => undefined,
+        setBadWordFilter: async (enabled) => ({ enabled, active: true }),
+        addFilterRequirement: async (requirement) => ({ id: 1, requirement }),
+        listFilterRequirements: async () => [],
+        removeFilterRequirement: async () => false,
+        clearFilterRequirements: async () => 0,
+        setFilterWarningLimit: async () => undefined,
+        getFilterWarningLimit: async () => undefined,
+        clearFilterWarnings: async () => undefined,
         inviteCode: async () => 'invite-code',
         revokeInvite: async () => 'new-invite-code',
         info: async () => ({
@@ -207,6 +376,9 @@ const routerConfig: BotConfig = {
     authPath: ':memory:',
     logLevel: 'info',
     roleDbPath: ':memory:',
+    moderationDbPath: ':memory:',
+    typeSafeModel: 'jev-1.14.0',
+    badWordThreshold: 0.9,
 }
 
 const silentLogger = {
@@ -237,6 +409,15 @@ function groupResponder(
         setSubject: async () => undefined,
         setDescription: async () => undefined,
         setSetting: async () => undefined,
+        setInviteLinkSharing: async () => undefined,
+        setBadWordFilter: async (enabled) => ({ enabled, active: true }),
+        addFilterRequirement: async (requirement) => ({ id: 1, requirement }),
+        listFilterRequirements: async () => [],
+        removeFilterRequirement: async () => false,
+        clearFilterRequirements: async () => 0,
+        setFilterWarningLimit: async () => undefined,
+        getFilterWarningLimit: async () => undefined,
+        clearFilterWarnings: async () => undefined,
         inviteCode: async () => 'invite-code',
         revokeInvite: async () => 'new-invite-code',
         info: async () => ({

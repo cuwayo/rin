@@ -161,6 +161,9 @@ const testConfig: BotConfig = {
     authPath: ':memory:',
     logLevel: 'info',
     roleDbPath: ':memory:',
+    moderationDbPath: ':memory:',
+    typeSafeModel: 'jev-1.14.0',
+    badWordThreshold: 0.9,
 }
 
 const silentLogger = {

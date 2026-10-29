@@ -11,6 +11,14 @@ export interface BotConfig {
     readonly superuserId?: string
     /** SQLite database that stores bot moderator assignments. */
     readonly roleDbPath: string
+    /** SQLite database that stores per-group moderation settings. */
+    readonly moderationDbPath: string
+    /** Optional API key used for Jev-powered moderation. */
+    readonly typeSafeApiKey?: string
+    /** Versioned Jev model ID or alias used for moderation. */
+    readonly typeSafeModel: string
+    /** Probability at or above which the bot deletes a flagged message. */
+    readonly badWordThreshold: number
 }
 
 export const BOT_CONFIG = createToken<BotConfig>('BOT_CONFIG')
@@ -50,6 +58,14 @@ function superuserId(
     )
 }
 
+function probability(value: string | undefined, variableName: string): number {
+    const candidate = value?.trim()
+    if (!candidate) return 0.9
+    const parsed = Number(candidate)
+    if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 1) return parsed
+    throw new Error(`${variableName} must be a number from 0 to 1.`)
+}
+
 export function loadConfig(environment = Bun.env): BotConfig {
     const prefix = nonEmpty(environment.BOT_PREFIX, '!')
     if (prefix.length > 3) {
@@ -76,6 +92,16 @@ export function loadConfig(environment = Bun.env): BotConfig {
         roleDbPath: nonEmpty(
             environment.BOT_ROLE_DB_PATH,
             '.auth/roles.sqlite',
+        ),
+        moderationDbPath: nonEmpty(
+            environment.BOT_MODERATION_DB_PATH,
+            '.auth/moderation.sqlite',
+        ),
+        typeSafeApiKey: environment.TYPESAFE_API_KEY?.trim() || undefined,
+        typeSafeModel: nonEmpty(environment.TYPESAFE_MODEL, 'jev-1.14.0'),
+        badWordThreshold: probability(
+            environment.BOT_BADWORD_THRESHOLD,
+            'BOT_BADWORD_THRESHOLD',
         ),
     }
 }

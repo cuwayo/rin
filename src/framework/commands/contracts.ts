@@ -1,5 +1,6 @@
 import type { WaIncomingMessageEvent, WaSendMessageContent } from 'zapo-js'
 import type { ParsedMessage } from '../bot/message.ts'
+import type { GroupFilterRequirement } from '../moderation/group-moderation-store.ts'
 
 /**
  * Data and safe role resolvers provided to an authorization check.
@@ -71,6 +72,14 @@ export interface GroupParticipantActionResult {
     readonly code: number
 }
 
+/** The effective state of Jev bad-word moderation for a group. */
+export interface GroupBadWordFilterStatus {
+    /** Whether moderation is enabled in the group's saved configuration. */
+    readonly enabled: boolean
+    /** Whether Jev can currently evaluate messages for the group. */
+    readonly active: boolean
+}
+
 /**
  * Safe group-management operations exposed to commands.
  *
@@ -96,6 +105,18 @@ export interface GroupCommandActions {
         setting: 'announcement' | 'restrict',
         enabled: boolean,
     ): Promise<void>
+    /** When false, only group admins can share or forward the invite link. */
+    setInviteLinkSharing(enabled: boolean): Promise<void>
+    /** Saves and returns the effective Jev moderation state for this group. */
+    setBadWordFilter(enabled: boolean): Promise<GroupBadWordFilterStatus>
+    /** Adds a Jev moderation rule scoped to the invoking group. */
+    addFilterRequirement(requirement: string): Promise<GroupFilterRequirement>
+    listFilterRequirements(): Promise<readonly GroupFilterRequirement[]>
+    removeFilterRequirement(requirementId: number): Promise<boolean>
+    clearFilterRequirements(): Promise<number>
+    setFilterWarningLimit(warningLimit: number | undefined): Promise<void>
+    getFilterWarningLimit(): Promise<number | undefined>
+    clearFilterWarnings(participants: readonly string[]): Promise<void>
     inviteCode(): Promise<string>
     revokeInvite(): Promise<string>
     info(): Promise<GroupCommandInfo>

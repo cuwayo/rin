@@ -18,15 +18,19 @@ cp .env.example .env
 
 Configure the following values in `.env` as needed:
 
-| Variable            | Default              | Description                                                 |
-| ------------------- | -------------------- | ----------------------------------------------------------- |
-| `BOT_PREFIX`        | `!`                  | Prefix required for command messages.                       |
-| `BOT_LOG_LEVEL`     | `info`               | Minimum severity for application logs.                      |
-| `BOT_SESSION_ID`    | `rin`                | Identifier for the Zapo session.                            |
-| `BOT_AUTH_PATH`     | `.auth/state.sqlite` | SQLite file for credentials and Signal state.               |
-| `BOT_PAIRING_PHONE` | _unset_              | Optional international phone number for code-based pairing. |
-| `BOT_SUPERUSER_ID`  | _unset_              | Owner phone number only; no `@s.whatsapp.net` or `@lid`.    |
-| `BOT_ROLE_DB_PATH`  | `.auth/roles.sqlite` | SQLite database for superuser-managed moderators.           |
+| Variable                 | Default                   | Description                                                  |
+| ------------------------ | ------------------------- | ------------------------------------------------------------ |
+| `BOT_PREFIX`             | `!`                       | Prefix required for command messages.                        |
+| `BOT_LOG_LEVEL`          | `info`                    | Minimum severity for application logs.                       |
+| `BOT_SESSION_ID`         | `rin`                     | Identifier for the Zapo session.                             |
+| `BOT_AUTH_PATH`          | `.auth/state.sqlite`      | SQLite file for credentials and Signal state.                |
+| `BOT_PAIRING_PHONE`      | _unset_                   | Optional international phone number for code-based pairing.  |
+| `BOT_SUPERUSER_ID`       | _unset_                   | Owner phone number only; no `@s.whatsapp.net` or `@lid`.     |
+| `BOT_ROLE_DB_PATH`       | `.auth/roles.sqlite`      | SQLite database for superuser-managed moderators.            |
+| `BOT_MODERATION_DB_PATH` | `.auth/moderation.sqlite` | SQLite database for per-group moderation settings.           |
+| `TYPESAFE_API_KEY`       | _unset_                   | Authorizes Jev requests; groups enable filtering separately. |
+| `TYPESAFE_MODEL`         | `jev-1.14.0`              | Jev model used for moderation.                               |
+| `BOT_BADWORD_THRESHOLD`  | `0.9`                     | Probability threshold used to flag a rule violation (0–1).   |
 
 ## Running the service
 
@@ -57,6 +61,40 @@ restricted-info modes; viewing or rotating the invite link; and viewing basic
 group details. Supply a phone number or WhatsApp JID to add a member; use a
 WhatsApp mention for other member actions. Run `!group` without an action to
 see its usage.
+
+`!group link-sharing off` restricts forwarding or sharing the group invite link
+to admins.
+
+### Group moderation
+
+To use Jev moderation, configure `TYPESAFE_API_KEY`, then have a group admin
+run `!group filter on` in each group. The API key only authorizes requests; it
+does not activate filtering globally. Built-in moderation flags messages that
+contain a profane, obscene, or hateful slur. Group admins can add additional
+policy with `!group filter requirement add <rule>`, list rules with `...
+requirement list`, remove one with `... requirement remove <id>`, or remove all
+custom rules with `... requirement clear`.
+
+TypeSafe receives message text or captions, the text of each configured custom
+rule, and eligible image bytes for classification. Eligible images are
+non-view-once JPEG or PNG attachments no larger than 8 MiB. Image moderation
+uses an experimental capability; tune `BOT_BADWORD_THRESHOLD` on representative
+messages before relying on it for high-stakes moderation.
+
+The threshold determines whether Jev flags a violation. Deleting a flagged
+message also requires the bot to be a group admin and a successful WhatsApp
+revoke operation. If a TypeSafe request fails or times out, the message is
+allowed (fail open); do not use this filter as the sole safety control.
+
+For each flagged message, the bot attempts a warning reply. Use `!group filter
+warnings <count>` to enable automatic member-removal attempts after that many
+warnings; for example, `!group filter warnings 3` attempts removal on a
+member's third warning. Automatic removal is disabled by default and can be
+turned off with `!group filter warnings off`. Reset a member's warning count
+with `!group filter warnings reset <@mention>`. Member removal also requires
+bot admin privileges and a successful WhatsApp operation. The bot keeps group
+metadata cached, refreshes it after group changes it makes, and refreshes it
+when WhatsApp reports a group lifecycle event.
 
 ## Development
 

@@ -11,6 +11,10 @@ import type {
 } from '../../framework/commands/contracts.ts'
 import { Injectable } from '../../framework/core/di.ts'
 import { normalizeUserJid } from '../../framework/core/jid.ts'
+import {
+    MAX_FILTER_REQUIREMENT_LENGTH,
+    MAX_FILTER_WARNING_LIMIT,
+} from '../../framework/moderation/bad-word-filter.ts'
 
 const usage = [
     'Usage:',
@@ -20,6 +24,14 @@ const usage = [
     'group description <text>|clear',
     'group announce on|off',
     'group restrict on|off',
+    'group link-sharing on|off',
+    'group filter on|off',
+    'group filter requirement add <rule>',
+    'group filter requirement list',
+    'group filter requirement remove <id>',
+    'group filter requirement clear',
+    'group filter warnings <count|off>',
+    'group filter warnings reset <@mention> [...]',
     'group link',
     'group revoke-link',
     'group info',
@@ -76,6 +88,14 @@ export class GroupCommand implements BotCommand {
                 return
             case 'restrict':
                 await this.restrict(subcommandContext)
+                return
+            case 'link-sharing':
+            case 'link-share':
+                await this.linkSharing(subcommandContext)
+                return
+            case 'filter':
+            case 'badword-filter':
+                await this.filter(subcommandContext)
                 return
             case 'link':
                 await this.link(subcommandContext)
@@ -197,6 +217,28 @@ export class GroupCommand implements BotCommand {
     }
 
     @Command({
+        name: 'link-sharing',
+        aliases: ['link-share'],
+        description: 'Control whether members can share the group invite link.',
+    })
+    async linkSharing(context: CommandContext): Promise<void> {
+        await this.withGroup(context, (group) =>
+            updateInviteLinkSharing(context, group, context.args[0]),
+        )
+    }
+
+    @Command({
+        name: 'filter',
+        aliases: ['badword-filter'],
+        description: 'Configure Jev moderation and custom rules in this group.',
+    })
+    async filter(context: CommandContext): Promise<void> {
+        await this.withGroup(context, (group) =>
+            updateBadWordFilter(context, group),
+        )
+    }
+
+    @Command({
         name: 'link',
         description: 'Show the group invite link.',
     })
@@ -242,9 +284,7 @@ export class GroupCommand implements BotCommand {
         try {
             await action(group)
         } catch (error) {
-            await context.reply(
-                `WhatsApp rejected the group update: ${groupErrorMessage(error)}`,
-            )
+            await context.reply(groupErrorMessage(error))
         }
     }
 }
@@ -335,6 +375,236 @@ async function updateSetting(
     await context.reply(`${label} ${enabled ? 'enabled' : 'disabled'}.`)
 }
 
+async function updateInviteLinkSharing(
+    context: CommandContext,
+    group: GroupCommandActions,
+    rawValue: string | undefined,
+): Promise<void> {
+    const enabled = parseToggle(rawValue)
+    if (enabled === undefined) {
+        await context.reply(`Usage: ${context.prefix}group link-sharing on|off`)
+        return
+    }
+    await group.setInviteLinkSharing(enabled)
+    await context.reply(
+        enabled
+            ? 'Members can now share the group invite link.'
+            : 'Only group admins can now share the group invite link.',
+    )
+}
+
+async function updateBadWordFilter(
+    context: CommandContext,
+    group: GroupCommandActions,
+): Promise<void> {
+    const [rawAction, ...rest] = context.args
+    if (
+        rawAction?.toLowerCase() === 'requirement' ||
+        rawAction?.toLowerCase() === 'requirements' ||
+        rawAction?.toLowerCase() === 'rule' ||
+        rawAction?.toLowerCase() === 'rules'
+    ) {
+        await updateFilterRequirement(context, group, rest)
+        return
+    }
+    if (
+        rawAction?.toLowerCase() === 'warning' ||
+        rawAction?.toLowerCase() === 'warnings'
+    ) {
+        await updateFilterWarnings(context, group, rest)
+        return
+    }
+
+    const enabled = parseToggle(rawAction)
+    if (enabled === undefined) {
+        await context.reply(
+            [
+                `Usage: ${context.prefix}group filter on|off`,
+                `${context.prefix}group filter requirement add <rule>`,
+                `${context.prefix}group filter requirement list|remove <id>|clear`,
+                `${context.prefix}group filter warnings <count|off>`,
+            ].join('\n'),
+        )
+        return
+    }
+    const status = await group.setBadWordFilter(enabled)
+    if (status.enabled && !status.active) {
+        await context.reply(
+            'Jev bad-word filtering is enabled for this group but inactive until a TypeSafe API key is configured.',
+        )
+        return
+    }
+    await context.reply(
+        `Jev bad-word filtering ${status.enabled ? 'enabled' : 'disabled'} for this group.`,
+    )
+}
+
+async function updateFilterRequirement(
+    context: CommandContext,
+    group: GroupCommandActions,
+    args: readonly string[],
+): Promise<void> {
+    const [rawAction, ...rest] = args
+    switch (rawAction?.toLowerCase()) {
+        case 'list':
+        case 'ls': {
+            const requirements = await group.listFilterRequirements()
+            await context.reply(
+                requirements.length === 0
+                    ? 'No custom filter requirements are configured for this group.'
+                    : [
+                          'Custom filter requirements:',
+                          ...requirements.map(
+                              ({ id, requirement }) => `${id}. ${requirement}`,
+                          ),
+                      ].join('\n'),
+            )
+            return
+        }
+        case 'remove':
+        case 'delete':
+        case 'rm': {
+            const requirementId = positiveInteger(rest[0])
+            if (requirementId === undefined || rest.length !== 1) {
+                await context.reply(
+                    `Usage: ${context.prefix}group filter requirement remove <id>`,
+                )
+                return
+            }
+            const removed = await group.removeFilterRequirement(requirementId)
+            await context.reply(
+                removed
+                    ? `Filter requirement ${requirementId} removed.`
+                    : `No filter requirement with ID ${requirementId} exists in this group.`,
+            )
+            return
+        }
+        case 'clear': {
+            if (rest.length > 0) {
+                await context.reply(
+                    `Usage: ${context.prefix}group filter requirement clear`,
+                )
+                return
+            }
+            const cleared = await group.clearFilterRequirements()
+            await context.reply(
+                cleared === 0
+                    ? 'No custom filter requirements were configured for this group.'
+                    : `Cleared ${cleared} custom filter requirement${cleared === 1 ? '' : 's'}.`,
+            )
+            return
+        }
+        case 'add':
+        case 'set':
+            await addFilterRequirement(context, group, rest.join(' '))
+            return
+        default:
+            await context.reply(
+                [
+                    `Usage: ${context.prefix}group filter requirement add <rule>`,
+                    `${context.prefix}group filter requirement list|remove <id>|clear`,
+                    `Rules can contain at most ${MAX_FILTER_REQUIREMENT_LENGTH} characters.`,
+                ].join('\n'),
+            )
+    }
+}
+
+async function addFilterRequirement(
+    context: CommandContext,
+    group: GroupCommandActions,
+    rawRequirement: string,
+): Promise<void> {
+    const requirement = rawRequirement.trim()
+    if (!requirement) {
+        await context.reply(
+            `Usage: ${context.prefix}group filter requirement add <rule>`,
+        )
+        return
+    }
+    if (requirement.length > MAX_FILTER_REQUIREMENT_LENGTH) {
+        await context.reply(
+            `A filter requirement must be at most ${MAX_FILTER_REQUIREMENT_LENGTH} characters.`,
+        )
+        return
+    }
+    const added = await group.addFilterRequirement(requirement)
+    await context.reply(`Filter requirement ${added.id} added.`)
+}
+
+async function updateFilterWarnings(
+    context: CommandContext,
+    group: GroupCommandActions,
+    args: readonly string[],
+): Promise<void> {
+    const [rawValue, ...rest] = args
+    if (rawValue?.toLowerCase() === 'reset') {
+        const participants = mentionedParticipantTargets(context)
+        if (
+            participants.length === 0 ||
+            !hasOnlyRenderedMentionArguments(rest)
+        ) {
+            await context.reply(
+                `Usage: ${context.prefix}group filter warnings reset <@mention> [...]`,
+            )
+            return
+        }
+        await group.clearFilterWarnings(participants)
+        await context.reply(
+            `Filter warnings reset for ${participants.length} member${participants.length === 1 ? '' : 's'}.`,
+        )
+        return
+    }
+
+    if (rawValue === undefined) {
+        const warningLimit = await group.getFilterWarningLimit()
+        await context.reply(
+            warningLimit === undefined
+                ? 'Automatic member removal is disabled. Filter violations are still warned; deletion requires the bot to be a group admin.'
+                : `The bot will attempt to remove members after ${warningLimit} filter warning${warningLimit === 1 ? '' : 's'}.`,
+        )
+        return
+    }
+
+    if (
+        rawValue.toLowerCase() === 'off' ||
+        rawValue.toLowerCase() === 'disable'
+    ) {
+        if (rest.length > 0) {
+            await context.reply(
+                `Usage: ${context.prefix}group filter warnings <count|off>`,
+            )
+            return
+        }
+        await group.setFilterWarningLimit(undefined)
+        await context.reply(
+            'Automatic member removal disabled. Filter violations are still warned; deletion requires the bot to be a group admin.',
+        )
+        return
+    }
+
+    const warningLimit = positiveInteger(rawValue)
+    if (
+        warningLimit === undefined ||
+        warningLimit > MAX_FILTER_WARNING_LIMIT ||
+        rest.length > 0
+    ) {
+        await context.reply(
+            `Usage: ${context.prefix}group filter warnings <1-${MAX_FILTER_WARNING_LIMIT}|off>`,
+        )
+        return
+    }
+    await group.setFilterWarningLimit(warningLimit)
+    await context.reply(
+        `The bot will attempt to remove members after ${warningLimit} filter warning${warningLimit === 1 ? '' : 's'}.`,
+    )
+}
+
+function positiveInteger(value: string | undefined): number | undefined {
+    if (!value || !/^[1-9]\d*$/.test(value)) return undefined
+    const parsed = Number(value)
+    return Number.isSafeInteger(parsed) ? parsed : undefined
+}
+
 async function showInfo(
     context: CommandContext,
     group: GroupCommandActions,
@@ -379,6 +649,12 @@ function normalizeParticipantTargets(
     ]
 }
 
+function hasOnlyRenderedMentionArguments(args: readonly string[]): boolean {
+    // The command parser includes the text WhatsApp rendered for each mention.
+    // Actual targets still come only from WhatsApp's mention metadata above.
+    return args.every((argument) => /^@\S+$/.test(argument))
+}
+
 function parseToggle(value: string | undefined): boolean | undefined {
     switch (value?.toLowerCase()) {
         case 'on':
@@ -405,5 +681,8 @@ function prefixUsage(prefix: string): string {
 function groupErrorMessage(error: unknown): string {
     const message =
         error instanceof Error ? error.message : 'an unexpected error occurred'
-    return message.replace(/\s+/g, ' ').slice(0, 240)
+    if (/\b(?:timeout|timed out)\b/i.test(message)) {
+        return 'The group request timed out before it completed. Please try again.'
+    }
+    return `Could not complete the group update: ${message.replace(/\s+/g, ' ').slice(0, 240)}`
 }
