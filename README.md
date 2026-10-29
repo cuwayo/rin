@@ -1,6 +1,8 @@
 # Rin
 
-Rin is a WhatsApp command service built with [Zapo](https://zapo.to/) and TypeScript. It provides decorator-based command registration, dependency injection, and persistent SQLite session storage.
+Rin is a WhatsApp command service built with [Zapo](https://zapo.to/) and
+TypeScript. It provides decorator-based command registration, dependency
+injection, and persistent SQLite session storage.
 
 ## Prerequisites
 
@@ -40,10 +42,15 @@ bun run dev
 
 On an unpaired session, one of the following methods is used:
 
-- **QR pairing (default):** In WhatsApp, open **Settings → Linked devices → Link a device**, then scan the QR code shown in the terminal.
-- **Phone-number pairing:** Set `BOT_PAIRING_PHONE` to a digits-only international phone number, for example `628123456789`. The terminal displays an eight-character code. In WhatsApp, select **Linked devices → Link with phone number instead** and enter the code.
+-   **QR pairing (default):** In WhatsApp, open **Settings → Linked devices →
+    Link a device**, then scan the QR code shown in the terminal.
+-   **Phone-number pairing:** Set `BOT_PAIRING_PHONE` to a digits-only
+    international phone number, for example `628123456789`. The terminal
+    displays an eight-character code. In WhatsApp, select **Linked devices →
+    Link with phone number instead** and enter the code.
 
-Session credentials are stored at the configured `BOT_AUTH_PATH`. Keep this file private; it is excluded from version control.
+Session credentials are stored at the configured `BOT_AUTH_PATH`. Keep this file
+private; it is excluded from version control.
 
 ## Commands
 
@@ -106,7 +113,9 @@ bun run typecheck     # Type-check without emitting files
 bun run verify        # Run type-checking and all Biome checks
 ```
 
-Biome enforces four-space indentation and the recommended TypeScript lint rules. The GitHub Actions workflow runs `bun run verify` for every push and pull request.
+Biome enforces two-space indentation and the recommended TypeScript lint rules.
+The GitHub Actions workflow runs `bun run verify` for every push and pull
+request.
 
 ## Project layout
 
@@ -369,4 +378,5 @@ with the remaining wait time.
 
 ## License
 
-Rin is licensed under the GNU General Public License v3.0 only. See [LICENSE](LICENSE).
+Rin is licensed under the GNU General Public License v3.0 only. See
+[LICENSE](LICENSE).
