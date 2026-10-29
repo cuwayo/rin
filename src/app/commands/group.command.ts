@@ -41,6 +41,7 @@ const usage = [
   name: 'group',
   aliases: ['groupctl', 'gc'],
   description: 'Manage this group (admins only).',
+  usage: '<subcommand>',
 })
 @GroupAdmin()
 @Injectable()
@@ -115,6 +116,7 @@ export class GroupCommand implements BotCommand {
   @Command({
     name: 'add',
     description: 'Add members by phone number, JID, or mention.',
+    usage: '<phone-number|jid> [...]',
   })
   async add(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) =>
@@ -133,6 +135,7 @@ export class GroupCommand implements BotCommand {
     name: 'remove',
     aliases: ['kick'],
     description: 'Remove mentioned members from the group.',
+    usage: '<@mention> [...]',
   })
   async remove(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) =>
@@ -148,6 +151,7 @@ export class GroupCommand implements BotCommand {
   @Command({
     name: 'promote',
     description: 'Promote mentioned members to group admin.',
+    usage: '<@mention> [...]',
   })
   async promote(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) =>
@@ -163,6 +167,7 @@ export class GroupCommand implements BotCommand {
   @Command({
     name: 'demote',
     description: 'Demote mentioned group admins.',
+    usage: '<@mention> [...]',
   })
   async demote(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) =>
@@ -178,6 +183,7 @@ export class GroupCommand implements BotCommand {
   @Command({
     name: 'subject',
     description: 'Change the group subject.',
+    usage: '<new-subject>',
   })
   async subject(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) =>
@@ -189,6 +195,7 @@ export class GroupCommand implements BotCommand {
     name: 'description',
     aliases: ['desc'],
     description: 'Change or clear the group description.',
+    usage: '<text>|clear',
   })
   async description(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) =>
@@ -199,6 +206,7 @@ export class GroupCommand implements BotCommand {
   @Command({
     name: 'announce',
     description: 'Enable or disable announcement-only messages.',
+    usage: 'on|off',
   })
   async announce(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) =>
@@ -209,6 +217,7 @@ export class GroupCommand implements BotCommand {
   @Command({
     name: 'restrict',
     description: 'Control who may edit group information.',
+    usage: 'on|off',
   })
   async restrict(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) =>
@@ -220,6 +229,7 @@ export class GroupCommand implements BotCommand {
     name: 'link-sharing',
     aliases: ['link-share'],
     description: 'Control whether members can share the group invite link.',
+    usage: 'on|off',
   })
   async linkSharing(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) =>
@@ -231,6 +241,15 @@ export class GroupCommand implements BotCommand {
     name: 'filter',
     aliases: ['badword-filter'],
     description: 'Configure Jev moderation and custom rules in this group.',
+    usage: [
+      'on|off',
+      'requirement add <rule>',
+      'requirement list',
+      'requirement remove <id>',
+      'requirement clear',
+      'warnings <count|off>',
+      'warnings reset <@mention> [...]',
+    ],
   })
   async filter(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) =>
@@ -241,6 +260,7 @@ export class GroupCommand implements BotCommand {
   @Command({
     name: 'link',
     description: 'Show the group invite link.',
+    usage: '',
   })
   async link(context: CommandContext): Promise<void> {
     await this.withGroup(context, async (group) => {
@@ -254,6 +274,7 @@ export class GroupCommand implements BotCommand {
     name: 'revoke-link',
     aliases: ['reset-link'],
     description: 'Revoke the current group invite link.',
+    usage: '',
   })
   async revokeLink(context: CommandContext): Promise<void> {
     await this.withGroup(context, async (group) => {
@@ -266,6 +287,7 @@ export class GroupCommand implements BotCommand {
   @Command({
     name: 'info',
     description: 'Show this group’s details.',
+    usage: '',
   })
   async info(context: CommandContext): Promise<void> {
     await this.withGroup(context, (group) => showInfo(context, group));

@@ -19,6 +19,7 @@ import {
   name: 'cardinal',
   aliases: ['c'],
   description: 'Run Cardinal administration commands.',
+  usage: '<subcommand>',
 })
 @Superuser()
 @Injectable([RoleStore])
@@ -38,6 +39,7 @@ export class CardinalCommand implements BotCommand {
     name: 'addmod',
     aliases: ['modadd'],
     description: 'Add a bot moderator by number, JID, or @mention.',
+    usage: '<phone-number|jid|@mention>',
   })
   async addmod(context: CommandContext): Promise<void> {
     const target = moderatorTarget(context);
@@ -58,6 +60,7 @@ export class CardinalCommand implements BotCommand {
     name: 'delmod',
     aliases: ['moddel', 'removemod'],
     description: 'Remove a bot moderator by number, JID, or @mention.',
+    usage: '<phone-number|jid|@mention>',
   })
   async delmod(context: CommandContext): Promise<void> {
     const target = moderatorTarget(context);
@@ -78,6 +81,7 @@ export class CardinalCommand implements BotCommand {
     name: 'mods',
     aliases: ['moderators'],
     description: 'List bot moderators.',
+    usage: '',
   })
   async mods(context: CommandContext): Promise<void> {
     const moderators = await this.roleStore.listModerators();
@@ -91,6 +95,7 @@ export class CardinalCommand implements BotCommand {
   @Command({
     name: 'console',
     description: 'Run a terminal command.',
+    usage: '<command>',
   })
   async console(context: CommandContext): Promise<void> {
     const command = context.args.join(' ');
@@ -105,6 +110,7 @@ export class CardinalCommand implements BotCommand {
   @Command({
     name: 'debug',
     description: 'Run a JavaScript debugging snippet.',
+    usage: '<expression-or-statements>',
   })
   async debug(context: CommandContext): Promise<void> {
     const source = context.args.join(' ');

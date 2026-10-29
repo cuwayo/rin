@@ -18,6 +18,7 @@ export interface CommandDefinition {
   readonly name: string;
   readonly aliases: readonly string[];
   readonly description: string;
+  readonly usage?: CommandUsage;
   readonly type: Constructable<BotCommand>;
 }
 
@@ -25,6 +26,7 @@ export interface SubcommandDefinition {
   readonly name: string;
   readonly aliases: readonly string[];
   readonly description: string;
+  readonly usage?: CommandUsage;
   readonly handler: CommandHandler;
 }
 
@@ -33,6 +35,7 @@ export interface CommandGroupDefinition {
   readonly name: string;
   readonly aliases: readonly string[];
   readonly description: string;
+  readonly usage?: CommandUsage;
   readonly type: Constructable<BotCommand>;
   readonly subcommands: readonly SubcommandDefinition[];
 }
@@ -40,6 +43,9 @@ export interface CommandGroupDefinition {
 export type RegisteredCommand = CommandDefinition | CommandGroupDefinition;
 
 export type CommandHandler = (context: CommandContext) => void | Promise<void>;
+
+/** One or more argument forms accepted by a command. */
+export type CommandUsage = string | readonly string[];
 
 export type CommandOptions = Omit<
   CommandDefinition,
@@ -101,6 +107,7 @@ export function Command(
         name: options.name,
         aliases: options.aliases ?? [],
         description: options.description,
+        usage: options.usage,
         handler,
       });
       return;

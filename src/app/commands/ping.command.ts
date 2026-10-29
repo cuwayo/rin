@@ -8,6 +8,7 @@ import { Injectable } from '../../framework/core/di.ts';
 @Command({
   name: 'ping',
   description: 'Check whether the bot is responsive.',
+  usage: '',
 })
 @Injectable()
 export class PingCommand implements BotCommand {

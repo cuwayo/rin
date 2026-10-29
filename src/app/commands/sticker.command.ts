@@ -19,6 +19,7 @@ const maximumSourceBytes = 16 * 1024 * 1024;
   name: 'sticker',
   aliases: ['s'],
   description: 'Convert an image or video into a WhatsApp sticker.',
+  usage: '[reply-to-image-or-video]',
 })
 @Injectable([StickerWorker])
 export class StickerCommand implements BotCommand {

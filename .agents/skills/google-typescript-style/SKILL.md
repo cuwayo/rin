@@ -13,12 +13,12 @@ requirements; **should**, **prefer**, and **avoid** are strong guidance.
 
 Read the categories that apply to the change before editing or reviewing:
 
-| Change or review area | Read |
-| --- | --- |
-| File encoding, file order, imports, exports, and modules | [Files and modules](references/files-and-modules.md) |
-| Expressions, classes, functions, control flow, errors, decorators, and forbidden features | [Language features](references/language-features.md) |
-| Identifiers, inference, nullability, structural types, generics, and unsafe types | [Naming and type system](references/naming-and-type-system.md) |
-| JSDoc, compiler suppression, conformance, consistency, deprecation, and generated code | [Documentation, toolchain, and policies](references/documentation-toolchain-and-policies.md) |
+| Change or review area                                                                     | Read                                                                                         |
+| ----------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| File encoding, file order, imports, exports, and modules                                  | [Files and modules](references/files-and-modules.md)                                         |
+| Expressions, classes, functions, control flow, errors, decorators, and forbidden features | [Language features](references/language-features.md)                                         |
+| Identifiers, inference, nullability, structural types, generics, and unsafe types         | [Naming and type system](references/naming-and-type-system.md)                               |
+| JSDoc, compiler suppression, conformance, consistency, deprecation, and generated code    | [Documentation, toolchain, and policies](references/documentation-toolchain-and-policies.md) |
 
 For a broad change or a complete style review, read all four references. They
 are category-indexed summaries of every top-level section and subsection in the
