@@ -125,22 +125,22 @@ Create a decorated command class under `src/app/commands`, for example
 `src/app/commands/echo.command.ts`:
 
 ```ts
-import { Injectable } from '../../framework/core/di.ts'
-import { Command } from '../../framework/commands/command.decorator.ts'
+import { Injectable } from '../../framework/core/di.ts';
+import { Command } from '../../framework/commands/command.decorator.ts';
 import type {
-    BotCommand,
-    CommandContext,
-} from '../../framework/commands/contracts.ts'
+  BotCommand,
+  CommandContext,
+} from '../../framework/commands/contracts.ts';
 
 @Command({
-    name: 'echo',
-    description: 'Return the supplied text.',
+  name: 'echo',
+  description: 'Return the supplied text.',
 })
 @Injectable()
 export class EchoCommand implements BotCommand {
-    async execute({ args, reply }: CommandContext): Promise<void> {
-        await reply(args.join(' ') || 'No text was supplied.')
-    }
+  async execute({ args, reply }: CommandContext): Promise<void> {
+    await reply(args.join(' ') || 'No text was supplied.');
+  }
 }
 ```
 
@@ -154,45 +154,45 @@ container.
 typed symbol tokens, factories, transient services, and request/job scopes:
 
 ```ts
-import { Container, createToken, Injectable } from './src/framework/core/di.ts'
+import { Container, createToken, Injectable } from './src/framework/core/di.ts';
 
-const container = new Container()
+const container = new Container();
 
 interface Clock {
-    now(): number
+  now(): number;
 }
 
-const CLOCK = createToken<Clock>('Clock')
-const REQUEST_ID = createToken<string>('RequestId')
+const CLOCK = createToken<Clock>('Clock');
+const REQUEST_ID = createToken<string>('RequestId');
 
 @Injectable()
 class SystemClock implements Clock {
-    now(): number {
-        return Date.now()
-    }
+  now(): number {
+    return Date.now();
+  }
 }
 
 @Injectable({
-    dependencies: [CLOCK, REQUEST_ID],
-    lifetime: 'scoped',
+  dependencies: [CLOCK, REQUEST_ID],
+  lifetime: 'scoped',
 })
 class RequestState {
-    constructor(
-        readonly clock: Clock,
-        readonly requestId: string,
-    ) {}
+  constructor(
+    readonly clock: Clock,
+    readonly requestId: string,
+  ) {}
 }
 
 container
-    .registerSingleton(CLOCK, SystemClock)
-    .registerFactory(REQUEST_ID, () => crypto.randomUUID(), 'scoped')
+  .registerSingleton(CLOCK, SystemClock)
+  .registerFactory(REQUEST_ID, () => crypto.randomUUID(), 'scoped');
 
-const scope = container.createScope()
+const scope = container.createScope();
 try {
-    const state = scope.resolve(RequestState)
-    console.log(state.clock.now(), state.requestId)
+  const state = scope.resolve(RequestState);
+  console.log(state.clock.now(), state.requestId);
 } finally {
-    await scope.dispose()
+  await scope.dispose();
 }
 ```
 
@@ -211,9 +211,9 @@ resources:
 ```ts
 @Injectable()
 export class CacheClient implements AsyncDisposable {
-    async [Symbol.asyncDispose](): Promise<void> {
-        await this.close()
-    }
+  async [Symbol.asyncDispose](): Promise<void> {
+    await this.close();
+  }
 }
 ```
 
@@ -257,22 +257,25 @@ and lazy role resolvers. It can be synchronous or asynchronous, and can be
 packaged into a reusable decorator in the same style as discord.py checks:
 
 ```ts
-import { Command, Require } from '../../framework/commands/command.decorator.ts'
+import {
+  Command,
+  Require,
+} from '../../framework/commands/command.decorator.ts';
 
 const InAllowedGroup = (groupJid: string) =>
-    Require((authorization) => {
-        if (authorization.event.key.remoteJid === groupJid) return true
-        return { allowed: false, reason: 'allowed_group_required' }
-    })
+  Require((authorization) => {
+    if (authorization.event.key.remoteJid === groupJid) return true;
+    return { allowed: false, reason: 'allowed_group_required' };
+  });
 
 @Command({ name: 'announce', description: 'Send an announcement.' })
 @Moderator()
 @InAllowedGroup('123456789@g.us')
 @Injectable()
 export class AnnounceCommand implements BotCommand {
-    async execute(context: CommandContext): Promise<void> {
-        // ...
-    }
+  async execute(context: CommandContext): Promise<void> {
+    // ...
+  }
 }
 ```
 
@@ -290,47 +293,47 @@ its methods. This follows Discord.Net’s group/module style while keeping the
 current TypeScript decorator and OOP model:
 
 ```ts
-import { Injectable } from '../../framework/core/di.ts'
+import { Injectable } from '../../framework/core/di.ts';
 import {
-    Command,
-    Group,
-    GroupAdmin,
-} from '../../framework/commands/command.decorator.ts'
+  Command,
+  Group,
+  GroupAdmin,
+} from '../../framework/commands/command.decorator.ts';
 import type {
-    BotCommand,
-    CommandContext,
-} from '../../framework/commands/contracts.ts'
+  BotCommand,
+  CommandContext,
+} from '../../framework/commands/contracts.ts';
 
 @Group({
-    name: 'poll',
-    aliases: ['vote'],
-    description: 'Manage polls in this group.',
+  name: 'poll',
+  aliases: ['vote'],
+  description: 'Manage polls in this group.',
 })
 @GroupAdmin()
 @Injectable()
 export class PollCommand implements BotCommand {
-    // Called for `!poll` or an unknown subcommand.
-    async execute(context: CommandContext): Promise<void> {
-        await context.reply(`Usage: ${context.prefix}poll create|close`)
-    }
+  // Called for `!poll` or an unknown subcommand.
+  async execute(context: CommandContext): Promise<void> {
+    await context.reply(`Usage: ${context.prefix}poll create|close`);
+  }
 
-    @Command({
-        name: 'create',
-        aliases: ['new'],
-        description: 'Create a poll.',
-    })
-    async create(context: CommandContext): Promise<void> {
-        // For `!poll create Best snack?`, this is ["Best", "snack?"].
-        await context.reply(`Creating a poll: ${context.args.join(' ')}`)
-    }
+  @Command({
+    name: 'create',
+    aliases: ['new'],
+    description: 'Create a poll.',
+  })
+  async create(context: CommandContext): Promise<void> {
+    // For `!poll create Best snack?`, this is ["Best", "snack?"].
+    await context.reply(`Creating a poll: ${context.args.join(' ')}`);
+  }
 
-    @Command({
-        name: 'close',
-        description: 'Close the active poll.',
-    })
-    async close(context: CommandContext): Promise<void> {
-        // ...
-    }
+  @Command({
+    name: 'close',
+    description: 'Close the active poll.',
+  })
+  async close(context: CommandContext): Promise<void> {
+    // ...
+  }
 }
 ```
 
@@ -347,17 +350,17 @@ command runs, and reset if the bot restarts:
 
 ```ts
 import {
-    Command,
-    Cooldown,
-} from '../../framework/commands/command.decorator.ts'
+  Command,
+  Cooldown,
+} from '../../framework/commands/command.decorator.ts';
 
 @Command({ name: 'render', description: 'Render an image.' })
 @Cooldown(30_000)
 @Injectable()
 export class RenderCommand implements BotCommand {
-    async execute(context: CommandContext): Promise<void> {
-        // ...
-    }
+  async execute(context: CommandContext): Promise<void> {
+    // ...
+  }
 }
 ```
 

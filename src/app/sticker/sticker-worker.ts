@@ -1,22 +1,22 @@
 import {
-    createNativeStickerWorker,
-    type NativeStickerSource,
-    type NativeStickerTranscodeOptions,
-} from '@rin-ts/sticker'
-import { Injectable } from '../../framework/core/di.ts'
+  createNativeStickerWorker,
+  type NativeStickerSource,
+  type NativeStickerTranscodeOptions,
+} from '@rin-ts/sticker';
+import { Injectable } from '../../framework/core/di.ts';
 
 @Injectable()
 export class StickerWorker implements AsyncDisposable {
-    private readonly worker = createNativeStickerWorker()
+  private readonly worker = createNativeStickerWorker();
 
-    transcode(
-        source: NativeStickerSource,
-        options: NativeStickerTranscodeOptions,
-    ) {
-        return this.worker.transcode(source, options)
-    }
+  transcode(
+    source: NativeStickerSource,
+    options: NativeStickerTranscodeOptions,
+  ) {
+    return this.worker.transcode(source, options);
+  }
 
-    [Symbol.asyncDispose](): Promise<void> {
-        return this.worker.close()
-    }
+  [Symbol.asyncDispose](): Promise<void> {
+    return this.worker.close();
+  }
 }

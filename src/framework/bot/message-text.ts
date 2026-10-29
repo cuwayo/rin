@@ -1,8 +1,8 @@
-import type { WaIncomingMessageEvent } from 'zapo-js'
-import { parseIncomingMessage } from './message.ts'
+import type { WaIncomingMessageEvent } from 'zapo-js';
+import { parseIncomingMessage } from './message.ts';
 
 export function extractMessageText(
-    event: WaIncomingMessageEvent,
+  event: WaIncomingMessageEvent,
 ): string | undefined {
-    return parseIncomingMessage(event)?.text
+  return parseIncomingMessage(event)?.text;
 }

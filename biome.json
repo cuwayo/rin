@@ -1,20 +1,66 @@
 {
-    "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-    "formatter": {
-        "enabled": true,
-        "indentStyle": "space",
-        "indentWidth": 4
-    },
-    "linter": {
-        "enabled": true,
-        "rules": {
-            "preset": "recommended"
-        }
-    },
-    "javascript": {
-        "formatter": {
-            "quoteStyle": "single",
-            "semicolons": "asNeeded"
-        }
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "recommended",
+      "complexity": {
+        "noBannedTypes": "error",
+        "noStaticOnlyClass": "error",
+        "noUselessConstructor": "error"
+      },
+      "nursery": {
+        "noObjectConstructor": "error",
+        "noUnsafeTypeAssertion": "error"
+      },
+      "security": {
+        "noGlobalEval": "error"
+      },
+      "style": {
+        "noCommonJs": "error",
+        "noDefaultExport": "error",
+        "noInferrableTypes": "error",
+        "noNamespace": "error",
+        "noNonNullAssertion": "error",
+        "useConst": "error",
+        "useConsistentTypeDefinitions": "error",
+        "useExportType": "error",
+        "useReadonlyClassProperties": "error",
+        "useSingleVarDeclarator": "error",
+        "useThrowOnlyError": "error"
+      },
+      "suspicious": {
+        "noConstEnum": "error",
+        "noDebugger": "error",
+        "noExplicitAny": "error",
+        "noTsIgnore": "error",
+        "noVar": "error"
+      }
     }
+  },
+  "overrides": [
+    {
+      "includes": ["src/**/*.test.ts"],
+      "linter": {
+        "rules": {
+          "nursery": {
+            "noUnsafeTypeAssertion": "off"
+          }
+        }
+      }
+    }
+  ],
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "always",
+      "trailingCommas": "all"
+    }
+  }
 }

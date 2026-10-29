@@ -19,7 +19,7 @@ There is no separate build step; Bun executes the TypeScript entry point directl
 
 ## Coding Style & Naming Conventions
 
-Use TypeScript with strict compiler settings. Follow Biome: four spaces, single quotes, and no required semicolons. Use descriptive kebab-case filenames (for example, `command-router.ts` and `command-router.test.ts`); classes use PascalCase and functions/variables use camelCase. Keep tests alongside the code they cover and prefer behavior-focused test names. Run `bun run verify` before submitting changes.
+Use TypeScript with strict compiler settings. Follow the Google TypeScript style guide as enforced by Biome: two spaces, single quotes, trailing commas, and explicit semicolons. Use named exports, ES modules, `const`/`let`, and descriptive kebab-case filenames (for example, `command-router.ts` and `command-router.test.ts`); classes use PascalCase and functions/variables use camelCase. Narrow untrusted values at runtime rather than using type assertions; an unavoidable production assertion needs a local explanation and a targeted Biome suppression. For semantic rules and repository exceptions, read [.agents/skills/google-typescript-style/SKILL.md](.agents/skills/google-typescript-style/SKILL.md) before editing or reviewing TypeScript. Keep tests alongside the code they cover and prefer behavior-focused test names. Run `bun run verify` before submitting changes.
 
 ## Testing Guidelines
 
